@@ -27,6 +27,8 @@ Compiled at 20220203-2207 using Go go1.17.3 (arm64)
 
 Before starting the `injective-price-oracle` service, make sure you copy a template [.env](.env.example) file and fill the correct values, especially for the Cosmos keys. You can use latest `injectived` release to manage the keyring dir. It's never recommended to use private key as plaintext in `ORACLE_COSMOS_PK`, except for testing.
 
+More info on private keys: [A Guide to Private Key Management (Oracle)](https://injective.notion.site/A-Guide-to-Private-Key-Management-Oracle-e07fddc2fe7043b5803a97c118dccdcf)
+
 ```bash
 cp .env.example .env
 ```
