@@ -1,6 +1,6 @@
 # injective-price-oracle
 
-Injective's Oracle with dynamic price feeds. Allows anyone to start their own pre-approved price submissin process to the oracle module on the Injective Chain.
+Injective's Oracle with dynamic price feeds. Allows anyone to start their own pre-approved price submission process to the oracle module on the Injective Chain.
 
 ## Getting Started
 
@@ -61,7 +61,7 @@ There are two ways to add new feeds.
 
 ### Dynamic feeds (TOML)
 
-Most preferred way is to create **dynamic feeds** using [DOT Sytax](https://en.wikipedia.org/wiki/DOT_(graph_description_language)), using the Chainlink innovation in this area (see [Job Pipelines](https://docs.chain.link/docs/jobs/task-types/pipelines/)).
+Most preferred way is to create **dynamic feeds** using [DOT Syntax](https://en.wikipedia.org/wiki/DOT_(graph_description_language)), using the Chainlink innovation in this area (see [Job Pipelines](https://docs.chain.link/docs/jobs/task-types/pipelines/)).
 
 Check out this most simple example:
 
@@ -112,7 +112,7 @@ List of config fields:
 
 ### Native Go code
 
-Yes, you can also simply fork this repo and add own native implementations of the price feeds. There is a Binance example provided in [feed_binance.go](/oracle/feed_binance.go). Any complex feed can be added as long as the implementaion follows this Go interface:
+Yes, you can also simply fork this repo and add own native implementations of the price feeds. There is a Binance example provided in [feed_binance.go](/oracle/feed_binance.go). Any complex feed can be added as long as the implementation follows this Go interface:
 
 ```go
 type PricePuller interface {

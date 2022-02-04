@@ -248,7 +248,7 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 			result, err := pricePuller.PullPrice(ctx)
 			if err != nil {
 				metrics.ReportFuncError(s.svcTags)
-				feedLogger.WithError(err).Warningln("retryting PullPrice after error")
+				feedLogger.WithError(err).Warningln("retrying PullPrice after error")
 
 				for i := 0; i < maxRetriesPerInterval; i++ {
 					if result, err = pricePuller.PullPrice(ctx); err != nil {
