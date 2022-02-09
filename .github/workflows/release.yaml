@@ -1,4 +1,4 @@
-name: Release prod docker image
+name: Release docker images
 on:
   push:
     branches: [release-staging, release-prod]
