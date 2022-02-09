@@ -33,7 +33,7 @@ More info on private keys: [A Guide to Private Key Management (Oracle)](https://
 cp .env.example .env
 ```
 
-## Running with dynamic feeds
+## Running with dynamic feeds via binary
 
 This is an example that loads all dynamic feeds from [examples/](examples/) dir! Make sure to specify correct path to your TOML dir.
 
@@ -53,6 +53,61 @@ INFO[0067] PullPrice (pipeline run) done in 314.4035ms   dynamic=true provider=b
 INFO[0073] sent Tx in 1.706471708s                       batch_size=1 hash=6E3A6C8F7706DB0B0355C5691A628A56CD5A87BB14877D2F0D151178FCF2784A svc=oracle timeout=true
 INFO[0128] PullPrice (pipeline run) done in 310.32875ms  dynamic=true provider=binance_v3 svc=oracle ticker=INJ/USDT
 INFO[0133] sent Tx in 1.776902583s                       batch_size=1 hash=29D615079A891F25E5ADE167E78D478F8AA99CEEFED7DB47B3F5E71BFEDEB582 svc=oracle timeout=true
+```
+
+## Running with dynamic feeds via docker-compose
+1. Docker-compose file
+```
+version: '3.8'
+networks:
+  injective:
+    name: injective
+services:
+  injective-price-oracle:
+    container_name: injective-price-oracle
+    image: public.ecr.aws/l9h3g6c6/injective-price-oracle:prod
+    build: ../../../injective-price-oracle/
+    command: injective-price-oracle start --dynamic-feeds /root/oracle-feeds
+    logging:
+      driver: journald
+    environment:
+      # log config
+      ORACLE_ENV: prod
+      ORACLE_LOG_LEVEL: info
+      # chain config
+      ORACLE_SERVICE_WAIT_TIMEOUT: "1m"
+      ORACLE_COSMOS_CHAIN_ID: injective-1
+      ORACLE_COSMOS_GRPC: tcp://sentry0.injective.network:9900
+      ORACLE_TENDERMINT_RPC: http://sentry0.injective.network:26657
+      ORACLE_COSMOS_GAS_PRICES: 500000000inj
+      ORACLE_DYNAMIC_FEEDS_DIR:
+      # keyring config
+      ORACLE_COSMOS_KEYRING: file
+      ORACLE_COSMOS_KEYRING_DIR: /root/keyring-oracle
+      ORACLE_COSMOS_KEYRING_APP: injectived
+      ORACLE_COSMOS_FROM: oracle-user
+      ORACLE_COSMOS_FROM_PASSPHRASE: 12345678
+      ORACLE_COSMOS_PK:
+      ORACLE_COSMOS_USE_LEDGER: "false"
+      # You can pass variables from env here into specific integrations,
+      # make sure to suport that in the source code.
+      # ORACLE_BINANCE_URL=
+      # statsd config
+      ORACLE_STATSD_PREFIX: "inj-oracle"
+      ORACLE_STATSD_ADDR: host.docker.internal:8125
+      ORACLE_STATSD_STUCK_DUR: 5m
+      ORACLE_STATSD_MOCKING: "false"
+      ORACLE_STATSD_DISABLED: "false"
+    networks:
+      - injective
+    volumes:
+      - ~/keyring-oracle:/root/keyring-oracle
+      - ~/docker-volume/oracle-feeds:/root/oracle-feeds
+```
+2. Start and get logs
+```
+docker-compose up -d injective-price-oracle
+docker logs injective-price-oracle
 ```
 
 ## Adding new feeds

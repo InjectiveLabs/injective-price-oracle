@@ -19,6 +19,3 @@ COPY --from=builder /go/bin/* /usr/local/bin/
 #configure container
 VOLUME /apps/data
 WORKDIR /apps/data
-
-#default command
-CMD injective-price-oracle start
