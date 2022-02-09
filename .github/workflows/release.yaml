@@ -1,4 +1,4 @@
-name: Release prod docker image
+name: Release docker images
 on:
   push:
     branches: [release-staging, release-prod]
@@ -10,7 +10,7 @@ jobs:
     if: github.ref == 'refs/heads/release-staging'
     steps:
       - name: Checkout injective-price-oracle
-        uses: actions/checkout@release-staging
+        uses: actions/checkout@master
         with:
           repository: InjectiveLabs/injective-price-oracle
           ref: release-staging
@@ -34,7 +34,7 @@ jobs:
     if: github.ref == 'refs/heads/release-prod'
     steps:
       - name: Checkout injective-price-oracle
-        uses: actions/checkout@release-prod
+        uses: actions/checkout@master
         with:
           repository: InjectiveLabs/injective-price-oracle
           ref: release-prod
