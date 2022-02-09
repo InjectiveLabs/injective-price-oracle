@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -19,6 +20,7 @@ func makeHTTPRequest(
 	method StringParam,
 	url URLParam,
 	requestData MapParam,
+	headerMap MapParam,
 ) ([]byte, int, http.Header, time.Duration, error) {
 
 	var bodyReader io.Reader
@@ -35,6 +37,15 @@ func makeHTTPRequest(
 		return nil, 0, nil, 0, errors.Wrap(err, "failed to create http.Request")
 	}
 	request.Header.Set("Content-Type", "application/json")
+
+	for key, value := range headerMap {
+		if strings.ToLower(key) == lowerContentTypeKey {
+			// skip Content-Type override attempts
+			continue
+		}
+
+		request.Header.Set(key, value.(string))
+	}
 
 	httpRequest := HTTPRequest{
 		Request: request,
@@ -60,6 +71,8 @@ func makeHTTPRequest(
 	}
 	return responseBytes, statusCode, headers, elapsed, nil
 }
+
+var lowerContentTypeKey = strings.ToLower("Content-Type")
 
 type PossibleErrorResponses struct {
 	Error        string `json:"error"`
