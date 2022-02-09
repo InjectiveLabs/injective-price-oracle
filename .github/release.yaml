@@ -1,0 +1,53 @@
+name: Release prod docker image
+on:
+  push:
+    branches: [release-staging, release-prod]
+
+jobs:
+  release-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/release-staging'
+    steps:
+      - name: Checkout injective-price-oracle
+        uses: actions/checkout@release-staging
+        with:
+          repository: InjectiveLabs/injective-price-oracle
+          ref: release-staging
+          token: ${{ secrets.GH_TOKEN }}
+          path: ./injective-price-oracle
+      - name: Build image
+        run: |
+          cd injective-price-oracle
+          docker build -t public.ecr.aws/l9h3g6c6/injective-price-oracle:staging .
+      - name: Push image
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_KEY }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET }}
+          aws configure set region us-east-1
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/l9h3g6c6
+          docker push public.ecr.aws/l9h3g6c6/injective-price-oracle:staging
+
+  release-prod:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/release-prod'
+    steps:
+      - name: Checkout injective-price-oracle
+        uses: actions/checkout@release-prod
+        with:
+          repository: InjectiveLabs/injective-price-oracle
+          ref: release-prod
+          token: ${{ secrets.GH_TOKEN }}
+          path: ./injective-price-oracle
+      - name: Build image
+        run: |
+          cd injective-price-oracle
+          docker build -t public.ecr.aws/l9h3g6c6/injective-price-oracle:prod .
+      - name: Push image
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_KEY }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET }}
+          aws configure set region us-east-1
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/l9h3g6c6
+          docker push public.ecr.aws/l9h3g6c6/injective-price-oracle:prod
