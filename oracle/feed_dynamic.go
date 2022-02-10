@@ -151,16 +151,28 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 		err = errors.Wrap(err, "failed to execute pipeline run")
 		return zeroPrice, err
 	} else if run.State != pipeline.RunStatusCompleted {
+		if run.HasErrors() {
+			runLogger.Warningf("final run result has non-critical errors: %s", run.AllErrors.ToError())
+		}
+
+		if run.HasFatalErrors() {
+			err = errors.Errorf("final run result has fatal errors: %s", run.FatalErrors.ToError())
+			return zeroPrice, err
+		}
+
 		err = errors.Errorf("expected run to be completed, yet got %v", run.State)
 		return zeroPrice, err
 	}
 
 	finalResult := trrs.FinalResult(runLogger)
+
+	if finalResult.HasErrors() {
+		runLogger.Warningf("final run result has non-critical errors: %v", finalResult.AllErrors)
+	}
+
 	if finalResult.HasFatalErrors() {
 		err = errors.Errorf("final run result has fatal errors: %v", finalResult.FatalErrors)
 		return zeroPrice, err
-	} else if finalResult.HasErrors() {
-		runLogger.Warningf("final run result has non-critical errors: %v", finalResult.AllErrors)
 	}
 
 	res, err := finalResult.SingularResult()
@@ -171,8 +183,12 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 
 	price, ok := res.Value.(decimal.Decimal)
 	if !ok {
-		err = errors.Errorf("expected pipeline result as decimal.Decimal, but got %T", res.Value)
-		return zeroPrice, err
+		if floatPrice, ok := res.Value.(float64); ok {
+			price = decimal.NewFromFloat(floatPrice)
+		} else {
+			err = errors.Errorf("expected pipeline result as decimal.Decimal or float64, but got %T", res.Value)
+			return zeroPrice, err
+		}
 	}
 
 	runLogger.Infoln("PullPrice (pipeline run) done in", time.Since(ts))
