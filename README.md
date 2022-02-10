@@ -169,6 +169,26 @@ Notes on changes:
 
 * `http` task has been changed from the Chainlink's reference, to skip `allowUnrestrictedNetworkAccess` option, since TOMLs are trusted in this context. Added ability to specify additional HTTP headers, since some price fetching APIs require authorization – `headersMap`. Usage: `headersMap="{\\"x-api-key\\": \\"foobar\\"}"`
 
+#### Probing dynamic feeds
+
+During development sometimes one needs to evaluate if his TOML file is correct and the pipeline specification yields a correct result. To avoid running the whole E2E flow with chain, there is a simple stateless command - `probe`!
+
+Probe does the following:
+
+* Loads TOML and parses the pipleine
+* Created a dynamic price feed, as if it was orchestrated in the oracle
+* Tries to pull the price once, using the pipeline
+* Prints the anwer or an error
+
+Example:
+
+```
+$ injective-price-oracle probe examples/dynamic_binance.toml
+
+INFO[0000] PullPrice (pipeline run) done in 530.560708ms  dynamic=true provider=binance_v3 svc=oracle ticker=INJ/USDT
+INFO[0000] Answer: 4948000
+```
+
 ### Native Go code
 
 Yes, you can also simply fork this repo and add own native implementations of the price feeds. There is a Binance example provided in [feed_binance.go](/oracle/feed_binance.go). Any complex feed can be added as long as the implementation follows this Go interface:
