@@ -167,7 +167,7 @@ List of config fields:
 
 Notes on changes:
 
-* `http` task has been changed from the Chainlink's reference, to skip `allowUnrestrictedNetworkAccess` option, since TOMLs are trusted in this context. Added ability to specify additional HTTP headers, since some price fetching APIs require authorization – `headersMap`. Usage: `headersMap="{\\"x-api-key\\": \\"foobar\\"}"`
+* `http` task has been changed from the Chainlink's reference, to skip `allowUnrestrictedNetworkAccess` option, since TOMLs are trusted in this context. Added ability to specify additional HTTP headers, since some price fetching APIs require authorization – `headerMap`. Usage: `headerMap="{\\"x-api-key\\": \\"foobar\\"}"`
 
 #### Probing dynamic feeds
 
