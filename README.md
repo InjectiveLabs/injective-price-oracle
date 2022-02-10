@@ -165,6 +165,10 @@ List of config fields:
 * `pullInterval` time duration spec in Go-flavoured duration syntax. Cannot be negative or less than "1s". Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
 * `observationSource` - pipeline spec in DOT Syntax
 
+Notes on changes:
+
+* `http` task has been changed from the Chainlink's reference, to skip `allowUnrestrictedNetworkAccess` option, since TOMLs are trusted in this context. Added ability to specify additional HTTP headers, since some price fetching APIs require authorization – `headersMap`. Usage: `headersMap="{\\"x-api-key\\": \\"foobar\\"}"`
+
 ### Native Go code
 
 Yes, you can also simply fork this repo and add own native implementations of the price feeds. There is a Binance example provided in [feed_binance.go](/oracle/feed_binance.go). Any complex feed can be added as long as the implementation follows this Go interface:
