@@ -15,11 +15,11 @@ import (
 //     string
 //
 type HTTPTask struct {
-	BaseTask                       `mapstructure:",squash"`
-	Method                         string
-	URL                            string
-	RequestData                    string `json:"requestData"`
-	AllowUnrestrictedNetworkAccess string
+	BaseTask    `mapstructure:",squash"`
+	Method      string
+	URL         string
+	RequestData string `json:"requestData"`
+	HeaderMap   string `json:"headerMap"`
 }
 
 var _ Task = (*HTTPTask)(nil)
@@ -38,11 +38,13 @@ func (t *HTTPTask) Run(ctx context.Context, lggr log.Logger, vars Vars, inputs [
 		method      StringParam
 		url         URLParam
 		requestData MapParam
+		headerMap   MapParam
 	)
 	err = multierr.Combine(
 		errors.Wrap(ResolveParam(&method, From(NonemptyString(t.Method), "GET")), "method"),
 		errors.Wrap(ResolveParam(&url, From(VarExpr(t.URL, vars), NonemptyString(t.URL))), "url"),
 		errors.Wrap(ResolveParam(&requestData, From(VarExpr(t.RequestData, vars), JSONWithVarExprs(t.RequestData, vars, false), nil)), "requestData"),
+		errors.Wrap(ResolveParam(&headerMap, From(VarExpr(t.HeaderMap, vars), JSONWithVarExprs(t.HeaderMap, vars, false), nil)), "headerMap"),
 	)
 	if err != nil {
 		return Result{Error: err}, runInfo
@@ -52,8 +54,15 @@ func (t *HTTPTask) Run(ctx context.Context, lggr log.Logger, vars Vars, inputs [
 	if err != nil {
 		return Result{Error: err}, runInfo
 	}
+
+	headerMapJSON, err := json.Marshal(headerMap)
+	if err != nil {
+		return Result{Error: err}, runInfo
+	}
+
 	lggr.Debugln("HTTP task: sending request",
 		"requestData", string(requestDataJSON),
+		"headerMap", string(headerMapJSON),
 		"url", url.String(),
 		"method", method,
 	)
@@ -61,11 +70,8 @@ func (t *HTTPTask) Run(ctx context.Context, lggr log.Logger, vars Vars, inputs [
 	requestCtx, cancel := httpRequestCtx(ctx, t)
 	defer cancel()
 
-	responseBytes, statusCode, _, elapsed, err := makeHTTPRequest(requestCtx, lggr, method, url, requestData)
+	responseBytes, statusCode, _, elapsed, err := makeHTTPRequest(requestCtx, lggr, method, url, requestData, headerMap)
 	if err != nil {
-		if errors.Cause(err) == ErrDisallowedIP {
-			err = errors.Wrap(err, "connections to local resources are disabled by default, if you are sure this is safe, you can enable on a per-task basis by setting allowUnrestrictedNetworkAccess=true in the pipeline task spec")
-		}
 		return Result{Error: err}, RunInfo{IsRetryable: isRetryableHTTPError(statusCode, err)}
 	}
 

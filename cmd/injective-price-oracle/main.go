@@ -31,6 +31,7 @@ func main() {
 	}
 
 	app.Command("start", "Starts the oracle main loop.", oracleCmd)
+	app.Command("probe", "Validates target TOML file spec and runs it once, printing the result.", probeCmd)
 	app.Command("version", "Print the version information and exit.", versionCmd)
 
 	_ = app.Run(os.Args)
