@@ -10,7 +10,7 @@ import (
 	// DEBUG: do not enable in production
 	// _ "net/http/pprof"
 
-	"github.com/InjectiveLabs/injective-price-oracle/metrics"
+	"github.com/InjectiveLabs/metrics"
 )
 
 // startMetricsGathering initializes metric reporting client,
