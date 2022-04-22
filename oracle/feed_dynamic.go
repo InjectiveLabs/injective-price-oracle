@@ -13,8 +13,8 @@ import (
 	"github.com/shopspring/decimal"
 	log "github.com/xlab/suplog"
 
-	"github.com/InjectiveLabs/injective-price-oracle/metrics"
 	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
+	"github.com/InjectiveLabs/metrics"
 )
 
 type DynamicFeedConfig struct {

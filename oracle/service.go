@@ -16,7 +16,7 @@ import (
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 
-	"github.com/InjectiveLabs/injective-price-oracle/metrics"
+	"github.com/InjectiveLabs/metrics"
 )
 
 type Service interface {
