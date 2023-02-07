@@ -12,9 +12,9 @@ import (
 	"github.com/shopspring/decimal"
 	log "github.com/xlab/suplog"
 
-	chainclient "github.com/InjectiveLabs/sdk-go/chain/client"
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
 
 	"github.com/InjectiveLabs/metrics"
 )
@@ -49,7 +49,7 @@ type oracleSvc struct {
 	pricePullers        map[string]PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
 	feedProviderConfigs map[FeedProvider]interface{}
-	cosmosClient        chainclient.CosmosClient
+	cosmosClient        chainclient.ChainClient
 	exchangeQueryClient exchangetypes.QueryClient
 	oracleQueryClient   oracletypes.QueryClient
 
@@ -132,7 +132,7 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 }
 
 func NewService(
-	cosmosClient chainclient.CosmosClient,
+	cosmosClient chainclient.ChainClient,
 	exchangeQueryClient exchangetypes.QueryClient,
 	oracleQueryClient oracletypes.QueryClient,
 	feedProviderConfigs map[FeedProvider]interface{},
@@ -330,16 +330,16 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			return
 		}
 
-		if txResp.Code != 0 {
+		if txResp.GetTxResponse().Code != 0 {
 			batchLog.WithFields(log.Fields{
-				"hash":     txResp.TxHash,
-				"err_code": txResp.Code,
+				"hash":     txResp.GetTxResponse().TxHash,
+				"err_code": txResp.GetTxResponse().Code,
 			}).Errorf("set price Tx error: %s", txResp.String())
 
 			return
 		}
 
-		batchLog.WithField("hash", txResp.TxHash).Infoln("sent Tx in", time.Since(ts))
+		batchLog.WithField("hash", txResp.GetTxResponse().TxHash).Infoln("sent Tx in", time.Since(ts))
 	}
 
 	for {

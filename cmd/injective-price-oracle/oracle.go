@@ -16,7 +16,8 @@ import (
 	"github.com/xlab/closer"
 	log "github.com/xlab/suplog"
 
-	chainclient "github.com/InjectiveLabs/sdk-go/chain/client"
+	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
+	"github.com/InjectiveLabs/sdk-go/client/common"
 
 	"github.com/InjectiveLabs/injective-price-oracle/oracle"
 )
@@ -130,7 +131,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		}
 		clientCtx = clientCtx.WithClient(tmRPC)
 
-		cosmosClient, err := chainclient.NewCosmosClient(clientCtx, *cosmosGRPC, chainclient.OptionGasPrices(*cosmosGasPrices))
+		cosmosClient, err := chainclient.NewChainClient(clientCtx, *cosmosGRPC, common.OptionGasPrices(*cosmosGasPrices))
 		if err != nil {
 			log.WithError(err).WithFields(log.Fields{
 				"endpoint": *cosmosGRPC,
