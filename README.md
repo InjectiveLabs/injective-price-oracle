@@ -127,7 +127,7 @@ pullInterval = "1m"
 observationSource = """
    ticker [type=http method=GET url="https://api.binance.com/api/v3/ticker/price?symbol=INJUSDT"];
    parsePrice [type="jsonparse" path="price"]
-   multiplyDecimals [type="multiply" times=1000000]
+   multiplyDecimals [type="multiply" times=1]
 
    ticker -> parsePrice -> multiplyDecimals
 """
