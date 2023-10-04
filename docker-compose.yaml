@@ -7,6 +7,9 @@ services:
     command: injective-price-oracle start --dynamic-feeds /root/oracle-feeds
     logging:
       driver: journald
+    extra_hosts:    
+      - "host.docker.internal:host-gateway"
+    restart: always
     environment:
       # log config
       ORACLE_ENV: prod
