@@ -1,0 +1,9 @@
+provider = "injective_plf_oracle"
+ticker = "INJ/USDT"
+pullInterval = "1m"
+observationSource = """
+   ticker [type=http method=GET url="https://devnet.plf-oracle.injective.dev/v1/price?symbol=INJ/USDT"];
+   parsePrice [type="jsonparse" path="price"]
+
+   ticker -> parsePrice 
+"""

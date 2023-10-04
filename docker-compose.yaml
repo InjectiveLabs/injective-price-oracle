@@ -1,7 +1,4 @@
 version: '3.9'
-networks:
-  injective:
-    name: injective
 services:
   injective-price-oracle:
     container_name: injective-price-oracle
@@ -38,3 +35,6 @@ services:
       - injective
     volumes:
       - ./oracle-feeds:/root/oracle-feeds
+networks:
+  injective:
+    name: injective
