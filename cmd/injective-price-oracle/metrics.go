@@ -32,6 +32,7 @@ func startMetricsGathering(
 		for {
 			hostname, _ := os.Hostname()
 			err := metrics.Init(*statsdAddr, checkStatsdPrefix(*statsdPrefix), &metrics.StatterConfig{
+				Agent:                "datadog",
 				EnvName:              *envName,
 				HostName:             hostname,
 				StuckFunctionTimeout: duration(*statsdStuckDur, 30*time.Minute),
