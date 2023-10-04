@@ -1,0 +1,40 @@
+version: '3.9'
+networks:
+  injective:
+    name: injective
+services:
+  injective-price-oracle:
+    container_name: injective-price-oracle
+    image: public.ecr.aws/l9h3g6c6/injective-price-oracle:prod
+    build: .
+    command: injective-price-oracle start --dynamic-feeds /root/oracle-feeds
+    logging:
+      driver: journald
+    environment:
+      # log config
+      ORACLE_ENV: prod
+      ORACLE_LOG_LEVEL: info
+      # chain config
+      ORACLE_SERVICE_WAIT_TIMEOUT: "1m"
+      ORACLE_COSMOS_CHAIN_ID: ${ORACLE_COSMOS_CHAIN_ID}
+      ORACLE_COSMOS_GRPC: ${ORACLE_COSMOS_GRPC}
+      ORACLE_TENDERMINT_RPC: ${ORACLE_TENDERMINT_RPC}
+      ORACLE_COSMOS_GAS_PRICES: 500000000inj
+      ORACLE_DYNAMIC_FEEDS_DIR:
+      # keyring config
+      ORACLE_COSMOS_KEYRING: file
+      ORACLE_COSMOS_KEYRING_DIR: 
+      ORACLE_COSMOS_KEYRING_APP: 
+      ORACLE_COSMOS_FROM: 
+      ORACLE_COSMOS_FROM_PASSPHRASE: 
+      ORACLE_COSMOS_PK: ${ORACLE_COSMOS_PK}
+      ORACLE_COSMOS_USE_LEDGER: "false"
+      ORACLE_STATSD_PREFIX: "inj-oracle"
+      ORACLE_STATSD_ADDR: host.docker.internal:8125
+      ORACLE_STATSD_STUCK_DUR: 5m
+      ORACLE_STATSD_MOCKING: "false"
+      ORACLE_STATSD_DISABLED: "false"
+    networks:
+      - injective
+    volumes:
+      - ./oracle-feeds:/root/oracle-feeds
