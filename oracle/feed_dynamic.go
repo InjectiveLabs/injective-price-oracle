@@ -192,7 +192,7 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 				price = decimal.NewFromFloat(tmpPrice)
 			}
 		} else {
-			err = errors.New("value is not either decimals/float64/string")
+			err = errors.New("value is neither decimals, float64 nor string")
 		}
 
 		if err != nil {
