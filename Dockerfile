@@ -1,5 +1,5 @@
 #install packages for build layer
-FROM golang:1.17-alpine as builder
+FROM golang:1.21-alpine as builder
 RUN apk add --no-cache git gcc make perl jq libc-dev linux-headers
 
 #build binary
