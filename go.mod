@@ -1,6 +1,6 @@
 module github.com/InjectiveLabs/injective-price-oracle
 
-go 1.17
+go 1.21
 
 require (
 	github.com/InjectiveLabs/metrics v0.0.1
@@ -18,7 +18,7 @@ require (
 	github.com/xlab/closer v0.0.0-20190328110542-03326addb7c2
 	github.com/xlab/suplog v1.3.1
 	go.uber.org/multierr v1.7.0
-	gonum.org/v1/gonum v0.8.2
+	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.43.0
 	gopkg.in/guregu/null.v4 v4.0.0
 )
@@ -142,9 +142,9 @@ require (
 	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e // indirect
 	golang.org/x/net v0.0.0-20211005001312-d4b1ae081e3b // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef // indirect
+	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect

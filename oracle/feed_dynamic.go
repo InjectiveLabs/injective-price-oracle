@@ -185,8 +185,14 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 	if !ok {
 		if floatPrice, ok := res.Value.(float64); ok {
 			price = decimal.NewFromFloat(floatPrice)
+		} else if someString, ok := res.Value.(string); ok {
+			price, err = decimal.NewFromString(someString)
 		} else {
-			err = errors.Errorf("expected pipeline result as decimal.Decimal or float64, but got %T", res.Value)
+			err = errors.New("value is neither decimals, float64 nor string")
+		}
+
+		if err != nil {
+			err = fmt.Errorf("expected pipeline result as string, decimal.Decimal or float64, but got %T, err: %w", res.Value, err)
 			return zeroPrice, err
 		}
 	}
