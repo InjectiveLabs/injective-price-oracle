@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -187,10 +186,7 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 		if floatPrice, ok := res.Value.(float64); ok {
 			price = decimal.NewFromFloat(floatPrice)
 		} else if someString, ok := res.Value.(string); ok {
-			tmpPrice, err := strconv.ParseFloat(someString, 64)
-			if err == nil {
-				price = decimal.NewFromFloat(tmpPrice)
-			}
+			price, err = decimal.NewFromString(someString)
 		} else {
 			err = errors.New("value is neither decimals, float64 nor string")
 		}
