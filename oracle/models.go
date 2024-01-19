@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+
+	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 )
 
 // PriceData stores additional meta info for a price report.
@@ -23,6 +25,8 @@ type PriceData struct {
 
 	// Timestamp of the report
 	Timestamp time.Time
+
+	OracleType oracletypes.OracleType
 }
 
 type Ticker string

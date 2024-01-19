@@ -33,6 +33,7 @@ type PricePuller interface {
 	// PullPrice method must be implemented in order to get a price
 	// from external source, handled by PricePuller.
 	PullPrice(ctx context.Context) (price decimal.Decimal, err error)
+	OracleType() oracletypes.OracleType
 }
 
 type MultiPricePuller interface {
@@ -271,10 +272,11 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 			}
 
 			dataC <- &PriceData{
-				Ticker:    Ticker(ticker),
-				Symbol:    symbol,
-				Timestamp: time.Now().UTC(),
-				Price:     result,
+				Ticker:     Ticker(ticker),
+				Symbol:     symbol,
+				Timestamp:  time.Now().UTC(),
+				Price:      result,
+				OracleType: pricePuller.OracleType(),
 			}
 
 			t.Reset(pricePuller.Interval())
@@ -286,6 +288,65 @@ const (
 	commitPriceBatchTimeLimit = 5 * time.Second
 	commitPriceBatchSizeLimit = 100
 )
+
+func (s *oracleSvc) composePriceFeedMsgs(priceBatch []*PriceData) (results []cosmtypes.Msg) {
+	msg := &oracletypes.MsgRelayPriceFeedPrice{
+		Sender: s.cosmosClient.FromAddress().String(),
+	}
+
+	for _, priceData := range priceBatch {
+		if priceData.OracleType != oracletypes.OracleType_PriceFeed {
+			continue
+		}
+
+		msg.Base = append(msg.Base, priceData.Ticker.Base())
+		msg.Quote = append(msg.Quote, priceData.Ticker.Quote())
+		msg.Price = append(msg.Price, cosmtypes.MustNewDecFromStr(priceData.Price.String()))
+	}
+
+	if len(msg.Base) > 0 {
+		return []cosmtypes.Msg{msg}
+	}
+
+	return nil
+}
+
+func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
+	if len(priceBatch) == 0 {
+		return nil
+	}
+
+	providerToMsg := make(map[string]*oracletypes.MsgRelayProviderPrices)
+	for _, priceData := range priceBatch {
+		if priceData.OracleType != oracletypes.OracleType_Provider {
+			continue
+		}
+
+		provider := strings.ToLower(priceData.ProviderName)
+		msg, exist := providerToMsg[provider]
+		if !exist {
+			msg := &oracletypes.MsgRelayProviderPrices{
+				Sender:   s.cosmosClient.FromAddress().String(),
+				Provider: priceData.ProviderName,
+			}
+			providerToMsg[provider] = msg
+		}
+
+		msg.Symbols = append(msg.Symbols, priceData.Symbol)
+		msg.Prices = append(msg.Prices, cosmtypes.MustNewDecFromStr(priceData.Price.String()))
+	}
+
+	for _, msg := range providerToMsg {
+		result = append(result, msg)
+	}
+	return result
+}
+
+func (s *oracleSvc) composeMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
+	result = append(result, s.composePriceFeedMsgs(priceBatch)...)
+	result = append(result, s.composeProviderFeedMsgs(priceBatch)...)
+	return result
+}
 
 func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 	expirationTimer := time.NewTimer(commitPriceBatchTimeLimit)
@@ -309,37 +370,26 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			"timeout":    timeout,
 		})
 
-		msg := &oracletypes.MsgRelayPriceFeedPrice{
-			Sender: s.cosmosClient.FromAddress().String(),
-			Base:   make([]string, 0, len(currentBatch)),
-			Quote:  make([]string, 0, len(currentBatch)),
-			Price:  make([]cosmtypes.Dec, 0, len(currentBatch)),
-		}
-
-		for _, priceData := range currentBatch {
-			msg.Base = append(msg.Base, priceData.Ticker.Base())
-			msg.Quote = append(msg.Quote, priceData.Ticker.Quote())
-			msg.Price = append(msg.Price, cosmtypes.MustNewDecFromStr(priceData.Price.String()))
-		}
-
+		msgs := s.composeMsgs(pricesBatch)
 		ts := time.Now()
-		txResp, err := s.cosmosClient.SyncBroadcastMsg(msg)
+		txResp, err := s.cosmosClient.SyncBroadcastMsg(msgs...)
 		if err != nil {
 			metrics.ReportFuncError(s.svcTags)
 			batchLog.WithError(err).Errorln("failed to SyncBroadcastMsg")
 			return
 		}
 
-		if txResp.TxResponse != nil && txResp.TxResponse.Code != 0 {
-			batchLog.WithFields(log.Fields{
-				"hash":     txResp.TxResponse.TxHash,
-				"err_code": txResp.TxResponse.Code,
-			}).Errorf("set price Tx error: %s", txResp.String())
+		if txResp.TxResponse != nil {
+			if txResp.TxResponse.Code != 0 {
+				batchLog.WithFields(log.Fields{
+					"hash":     txResp.TxResponse.TxHash,
+					"err_code": txResp.TxResponse.Code,
+				}).Errorf("set price Tx error: %s", txResp.String())
 
-			return
+				return
+			}
+			batchLog.WithField("hash", txResp.TxResponse.TxHash).Infoln("sent Tx in", time.Since(ts))
 		}
-
-		batchLog.WithField("hash", txResp.TxResponse.TxHash).Infoln("sent Tx in", time.Since(ts))
 	}
 
 	for {

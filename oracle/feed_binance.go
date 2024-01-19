@@ -14,6 +14,7 @@ import (
 	log "github.com/xlab/suplog"
 
 	"github.com/InjectiveLabs/metrics"
+	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 )
 
 var _ PricePuller = &binancePriceFeed{}
@@ -84,6 +85,10 @@ func (f *binancePriceFeed) Provider() FeedProvider {
 
 func (f *binancePriceFeed) ProviderName() string {
 	return "Binance API v3"
+}
+
+func (f *binancePriceFeed) OracleType() oracletypes.OracleType {
+	return oracletypes.OracleType_PriceFeed
 }
 
 func (f *binancePriceFeed) PullPrice(ctx context.Context) (
