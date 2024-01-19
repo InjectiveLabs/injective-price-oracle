@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -10,13 +11,15 @@ import (
 
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	cli "github.com/jawher/mow.cli"
 	"github.com/pkg/errors"
-	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/xlab/closer"
 	log "github.com/xlab/suplog"
+	"google.golang.org/grpc/credentials"
 
-	chainclient "github.com/InjectiveLabs/sdk-go/chain/client"
+	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
+	"github.com/InjectiveLabs/sdk-go/client/common"
 
 	"github.com/InjectiveLabs/injective-price-oracle/oracle"
 )
@@ -104,21 +107,20 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Fatalln("cannot really use Ledger for oracle service loop, since signatures msut be realtime")
 		}
 
-		senderAddress, cosmosKeyring, err := initCosmosKeyring(
-			cosmosKeyringDir,
-			cosmosKeyringAppName,
-			cosmosKeyringBackend,
-			cosmosKeyFrom,
-			cosmosKeyPassphrase,
-			cosmosPrivKey,
-			cosmosUseLedger,
+		senderAddress, cosmosKeyring, err := chainclient.InitCosmosKeyring(
+			*cosmosKeyringDir,
+			*cosmosKeyringAppName,
+			*cosmosKeyringBackend,
+			*cosmosKeyFrom,
+			*cosmosKeyPassphrase,
+			*cosmosPrivKey,
+			*cosmosUseLedger,
 		)
 		if err != nil {
 			log.WithError(err).Fatalln("failed to init Cosmos keyring")
 		}
 
-		log.Infoln("using Cosmos Sender", senderAddress.String())
-
+		log.Infoln("using Injective Sender", senderAddress.String())
 		clientCtx, err := chainclient.NewClientContext(*cosmosChainID, senderAddress.String(), cosmosKeyring)
 		if err != nil {
 			log.WithError(err).Fatalln("failed to initialize cosmos client context")
@@ -130,7 +132,12 @@ func oracleCmd(cmd *cli.Cmd) {
 		}
 		clientCtx = clientCtx.WithClient(tmRPC)
 
-		cosmosClient, err := chainclient.NewCosmosClient(clientCtx, *cosmosGRPC, chainclient.OptionGasPrices(*cosmosGasPrices))
+		network := common.Network{
+			TmEndpoint:        *tendermintRPC,
+			ChainGrpcEndpoint: *cosmosGRPC,
+			ChainTlsCert:      credentials.NewTLS(&tls.Config{InsecureSkipVerify: false}),
+		}
+		cosmosClient, err := chainclient.NewChainClient(clientCtx, network)
 		if err != nil {
 			log.WithError(err).WithFields(log.Fields{
 				"endpoint": *cosmosGRPC,
