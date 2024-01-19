@@ -127,12 +127,12 @@ func oracleCmd(cmd *cli.Cmd) {
 		}
 
 		log.Infoln("using Injective Sender", senderAddress.String())
-		clientCtx, err := chainclient.NewClientContext(*cosmosChainID, senderAddress.String(), cosmosKeyring)
+		clientCtx, err := chainclient.NewClientContext(network.ChainId, senderAddress.String(), cosmosKeyring)
 		if err != nil {
 			log.WithError(err).Fatalln("failed to initialize cosmos client context")
 		}
-		clientCtx = clientCtx.WithNodeURI(*tendermintRPC)
-		tmRPC, err := rpchttp.New(*tendermintRPC, "/websocket")
+		clientCtx = clientCtx.WithNodeURI(network.TmEndpoint)
+		tmRPC, err := rpchttp.New(network.TmEndpoint, "/websocket")
 		if err != nil {
 			log.WithError(err).Fatalln("failed to connect to tendermint RPC")
 		}
