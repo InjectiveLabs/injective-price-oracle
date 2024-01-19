@@ -118,7 +118,7 @@ func waitForService(ctx context.Context, conn *grpc.ClientConn) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return errors.Errorf("Service wait timed out. Please run injective exchange service:\n\nmake install && injective-exchange")
+			return errors.Errorf("Service wait timed out")
 		default:
 			state := conn.GetState()
 

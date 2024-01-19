@@ -151,14 +151,8 @@ func NewService(
 		},
 	}
 
-	// supportedPriceFeeds is a mapping between price ticker and
-	// price feed config for a specific symbol.
-	svc.supportedPriceFeeds = map[string]PriceFeedConfig{
-		// Example hardcoded config
-		//
-		// "BNB/USDT":   {Symbol: "BNBUSDT", FeedProvider: FeedProviderBinance, PullInterval: 1 * time.Minute},
-	}
-
+	// supportedPriceFeeds is a mapping between price ticker and its pricefeed config
+	svc.supportedPriceFeeds = map[string]PriceFeedConfig{}
 	for _, feedCfg := range dynamicFeedConfigs {
 		svc.supportedPriceFeeds[feedCfg.Ticker] = PriceFeedConfig{
 			FeedProvider:  FeedProviderDynamic,
@@ -166,41 +160,18 @@ func NewService(
 		}
 	}
 
-	enabledFeeds := svc.getEnabledFeeds()
-	svc.pricePullers = make(map[string]PricePuller, len(enabledFeeds))
-
-	for ticker, feedCfg := range enabledFeeds {
-		tickerLog := svc.logger.WithField("ticker", ticker)
-
-		switch feedCfg.FeedProvider {
-		case FeedProviderBinance:
-			tickerLog.WithField("ticker", ticker).Errorln("binance native implementation is not enabled")
-			continue
-
-			// Example usage of initializing native implementation with passing a config:
-			//
-			// svc.pricePullers[ticker] = NewBinancePriceFeed(
-			// 	feedCfg.Symbol,
-			// 	feedCfg.PullInterval,
-			// 	svc.feedProviderConfigs[FeedProviderBinance].(*BinanceEndpointConfig),
-			// )
-
-		case FeedProviderDynamic:
-			pricePuller, err := NewDynamicPriceFeed(feedCfg.DynamicConfig)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to init dynamic price feed for ticker %s", ticker)
-				return nil, err
-			}
-			svc.pricePullers[ticker] = pricePuller
-
-		default:
-			tickerLog.WithField("ticker", ticker).Warningf("ticker has no supported feed provider: %s", feedCfg.FeedProvider)
-			continue
+	svc.pricePullers = map[string]PricePuller{}
+	for _, feedCfg := range dynamicFeedConfigs {
+		ticker := feedCfg.Ticker
+		pricePuller, err := NewDynamicPriceFeed(feedCfg)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to init dynamic price feed for ticker %s", ticker)
+			return nil, err
 		}
+		svc.pricePullers[ticker] = pricePuller
 	}
 
 	svc.logger.Infof("initialized %d price pullers", len(svc.pricePullers))
-
 	return svc, nil
 }
 
@@ -272,11 +243,12 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 			}
 
 			dataC <- &PriceData{
-				Ticker:     Ticker(ticker),
-				Symbol:     symbol,
-				Timestamp:  time.Now().UTC(),
-				Price:      result,
-				OracleType: pricePuller.OracleType(),
+				Ticker:       Ticker(ticker),
+				Symbol:       symbol,
+				Timestamp:    time.Now().UTC(),
+				ProviderName: pricePuller.ProviderName(),
+				Price:        result,
+				OracleType:   pricePuller.OracleType(),
 			}
 
 			t.Reset(pricePuller.Interval())
@@ -325,7 +297,7 @@ func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []c
 		provider := strings.ToLower(priceData.ProviderName)
 		msg, exist := providerToMsg[provider]
 		if !exist {
-			msg := &oracletypes.MsgRelayProviderPrices{
+			msg = &oracletypes.MsgRelayProviderPrices{
 				Sender:   s.cosmosClient.FromAddress().String(),
 				Provider: priceData.ProviderName,
 			}
@@ -370,7 +342,12 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			"timeout":    timeout,
 		})
 
-		msgs := s.composeMsgs(pricesBatch)
+		msgs := s.composeMsgs(currentBatch)
+		if len(msgs) == 0 {
+			batchLog.Debugf("pipeline composed no messages, so do nothing")
+			return
+		}
+
 		ts := time.Now()
 		txResp, err := s.cosmosClient.SyncBroadcastMsg(msgs...)
 		if err != nil {
@@ -415,7 +392,6 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			if len(pricesBatch) >= commitPriceBatchSizeLimit {
 				prevBatch := resetBatch()
 				submitBatch(prevBatch, false)
-
 			}
 		case <-expirationTimer.C:
 			prevBatch := resetBatch()

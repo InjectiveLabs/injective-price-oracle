@@ -72,11 +72,24 @@ func NewDynamicPriceFeed(cfg *DynamicFeedConfig) (PricePuller, error) {
 		pullInterval = interval
 	}
 
+	var oracleType oracletypes.OracleType
+	if cfg.OracleType == "" {
+		oracleType = oracletypes.OracleType_PriceFeed
+	} else {
+		tmpType, exist := oracletypes.OracleType_value[cfg.OracleType]
+		if !exist {
+			return nil, fmt.Errorf("oracle type does not exist: %s", cfg.OracleType)
+		}
+
+		oracleType = oracletypes.OracleType(tmpType)
+	}
+
 	feed := &dynamicPriceFeed{
 		ticker:       cfg.Ticker,
 		providerName: cfg.ProviderName,
 		interval:     pullInterval,
 		dotDagSource: cfg.ObservationSource,
+		oracleType:   oracleType,
 
 		logger: log.WithFields(log.Fields{
 			"svc":      "oracle",

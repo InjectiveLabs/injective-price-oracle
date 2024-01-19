@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
@@ -16,7 +17,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/xlab/closer"
 	log "github.com/xlab/suplog"
-	"google.golang.org/grpc/credentials"
 
 	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
 	"github.com/InjectiveLabs/sdk-go/client/common"
@@ -34,6 +34,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		cosmosGRPC      *string
 		tendermintRPC   *string
 		cosmosGasPrices *string
+		networkNode     *string
 
 		// Cosmos Key Management
 		cosmosKeyringDir     *string
@@ -63,6 +64,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		&cosmosGRPC,
 		&tendermintRPC,
 		&cosmosGasPrices,
+		&networkNode,
 	)
 
 	initCosmosKeyOptions(
@@ -107,6 +109,10 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Fatalln("cannot really use Ledger for oracle service loop, since signatures msut be realtime")
 		}
 
+		networkNodeSplit := strings.Split(*networkNode, ",")
+		networkStr, node := networkNodeSplit[0], networkNodeSplit[1]
+		network := common.LoadNetwork(networkStr, node)
+
 		senderAddress, cosmosKeyring, err := chainclient.InitCosmosKeyring(
 			*cosmosKeyringDir,
 			*cosmosKeyringAppName,
@@ -131,12 +137,6 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.WithError(err).Fatalln("failed to connect to tendermint RPC")
 		}
 		clientCtx = clientCtx.WithClient(tmRPC)
-
-		network := common.Network{
-			TmEndpoint:        *tendermintRPC,
-			ChainGrpcEndpoint: *cosmosGRPC,
-			ChainTlsCert:      credentials.NewTLS(&tls.Config{InsecureSkipVerify: false}),
-		}
 		cosmosClient, err := chainclient.NewChainClient(clientCtx, network)
 		if err != nil {
 			log.WithError(err).WithFields(log.Fields{
@@ -150,11 +150,12 @@ func oracleCmd(cmd *cli.Cmd) {
 		log.Infoln("waiting for GRPC services")
 		time.Sleep(1 * time.Second)
 
-		daemonWaitCtx, cancelWait := context.WithTimeout(context.Background(), time.Minute)
+		daemonWaitCtx, cancelWait := context.WithTimeout(context.Background(), 10*time.Second)
 		daemonConn := cosmosClient.QueryClient()
-		waitForService(daemonWaitCtx, daemonConn)
+		if err := waitForService(daemonWaitCtx, daemonConn); err != nil {
+			panic(fmt.Errorf("failed to wait for cosmos client connection: %w", err))
+		}
 		cancelWait()
-
 		feedProviderConfigs := map[oracle.FeedProvider]interface{}{
 			oracle.FeedProviderBinance: &oracle.BinanceEndpointConfig{
 				BaseURL: *binanceBaseURL,
