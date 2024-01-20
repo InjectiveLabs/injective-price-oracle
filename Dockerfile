@@ -13,15 +13,15 @@ RUN rm ./architecture
 WORKDIR /src
 COPY go.mod .
 COPY go.sum .
-RUN go mod tidy
+RUN go mod download
 COPY . .
 #install binary
-RUN BUILD_TAGS=muslc make install
+RUN BUILD_TAGS=netgo,muslc make install
 
 #build main container
 FROM alpine:latest
-RUN apk add --update --no-cache ca-certificates
-RUN apk add curl
+RUN apk add --no-cache ca-certificates aws-cli curl tree mongodb-tools nodejs npm
+RUN rm -rf /var/cache/apk/*
 COPY --from=builder /go/bin/* /usr/local/bin/
 
 #configure container
