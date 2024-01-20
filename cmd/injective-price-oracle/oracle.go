@@ -137,7 +137,7 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.WithError(err).Fatalln("failed to connect to tendermint RPC")
 		}
 		clientCtx = clientCtx.WithClient(tmRPC)
-		cosmosClient, err := chainclient.NewChainClient(clientCtx, network)
+		cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionGasPrices(*cosmosGasPrices))
 		if err != nil {
 			log.WithError(err).WithFields(log.Fields{
 				"endpoint": *cosmosGRPC,
