@@ -1,0 +1,10 @@
+provider = "InjectiveLabs"
+ticker = "TIA"
+pullInterval = "20s"
+oracleType = "Provider"
+observationSource = """
+   ticker [type=http method=GET url="https://staging.plf-oracle.injective.network/v1/price?symbol=TIA/USDT"];
+   parsePrice [type="jsonparse" path="price"]
+
+   ticker -> parsePrice 
+"""

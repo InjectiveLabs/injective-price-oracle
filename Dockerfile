@@ -16,7 +16,7 @@ COPY go.sum .
 RUN go mod download
 COPY . .
 #install binary
-RUN BUILD_TAGS=netgo,muslc make install
+RUN make install
 
 #build main container
 FROM alpine:latest
