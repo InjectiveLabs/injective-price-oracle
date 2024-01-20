@@ -12,9 +12,9 @@ import (
 	"github.com/shopspring/decimal"
 	log "github.com/xlab/suplog"
 
-	chainclient "github.com/InjectiveLabs/sdk-go/chain/client"
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
 
 	"github.com/InjectiveLabs/metrics"
 )
@@ -33,6 +33,7 @@ type PricePuller interface {
 	// PullPrice method must be implemented in order to get a price
 	// from external source, handled by PricePuller.
 	PullPrice(ctx context.Context) (price decimal.Decimal, err error)
+	OracleType() oracletypes.OracleType
 }
 
 type MultiPricePuller interface {
@@ -49,7 +50,7 @@ type oracleSvc struct {
 	pricePullers        map[string]PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
 	feedProviderConfigs map[FeedProvider]interface{}
-	cosmosClient        chainclient.CosmosClient
+	cosmosClient        chainclient.ChainClient
 	exchangeQueryClient exchangetypes.QueryClient
 	oracleQueryClient   oracletypes.QueryClient
 
@@ -132,7 +133,7 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 }
 
 func NewService(
-	cosmosClient chainclient.CosmosClient,
+	cosmosClient chainclient.ChainClient,
 	exchangeQueryClient exchangetypes.QueryClient,
 	oracleQueryClient oracletypes.QueryClient,
 	feedProviderConfigs map[FeedProvider]interface{},
@@ -150,14 +151,8 @@ func NewService(
 		},
 	}
 
-	// supportedPriceFeeds is a mapping between price ticker and
-	// price feed config for a specific symbol.
-	svc.supportedPriceFeeds = map[string]PriceFeedConfig{
-		// Example hardcoded config
-		//
-		// "BNB/USDT":   {Symbol: "BNBUSDT", FeedProvider: FeedProviderBinance, PullInterval: 1 * time.Minute},
-	}
-
+	// supportedPriceFeeds is a mapping between price ticker and its pricefeed config
+	svc.supportedPriceFeeds = map[string]PriceFeedConfig{}
 	for _, feedCfg := range dynamicFeedConfigs {
 		svc.supportedPriceFeeds[feedCfg.Ticker] = PriceFeedConfig{
 			FeedProvider:  FeedProviderDynamic,
@@ -165,41 +160,18 @@ func NewService(
 		}
 	}
 
-	enabledFeeds := svc.getEnabledFeeds()
-	svc.pricePullers = make(map[string]PricePuller, len(enabledFeeds))
-
-	for ticker, feedCfg := range enabledFeeds {
-		tickerLog := svc.logger.WithField("ticker", ticker)
-
-		switch feedCfg.FeedProvider {
-		case FeedProviderBinance:
-			tickerLog.WithField("ticker", ticker).Errorln("binance native implementation is not enabled")
-			continue
-
-			// Example usage of initializing native implementation with passing a config:
-			//
-			// svc.pricePullers[ticker] = NewBinancePriceFeed(
-			// 	feedCfg.Symbol,
-			// 	feedCfg.PullInterval,
-			// 	svc.feedProviderConfigs[FeedProviderBinance].(*BinanceEndpointConfig),
-			// )
-
-		case FeedProviderDynamic:
-			pricePuller, err := NewDynamicPriceFeed(feedCfg.DynamicConfig)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to init dynamic price feed for ticker %s", ticker)
-				return nil, err
-			}
-			svc.pricePullers[ticker] = pricePuller
-
-		default:
-			tickerLog.WithField("ticker", ticker).Warningf("ticker has no supported feed provider: %s", feedCfg.FeedProvider)
-			continue
+	svc.pricePullers = map[string]PricePuller{}
+	for _, feedCfg := range dynamicFeedConfigs {
+		ticker := feedCfg.Ticker
+		pricePuller, err := NewDynamicPriceFeed(feedCfg)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to init dynamic price feed for ticker %s", ticker)
+			return nil, err
 		}
+		svc.pricePullers[ticker] = pricePuller
 	}
 
 	svc.logger.Infof("initialized %d price pullers", len(svc.pricePullers))
-
 	return svc, nil
 }
 
@@ -271,10 +243,12 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 			}
 
 			dataC <- &PriceData{
-				Ticker:    Ticker(ticker),
-				Symbol:    symbol,
-				Timestamp: time.Now().UTC(),
-				Price:     result,
+				Ticker:       Ticker(ticker),
+				Symbol:       symbol,
+				Timestamp:    time.Now().UTC(),
+				ProviderName: pricePuller.ProviderName(),
+				Price:        result,
+				OracleType:   pricePuller.OracleType(),
 			}
 
 			t.Reset(pricePuller.Interval())
@@ -286,6 +260,65 @@ const (
 	commitPriceBatchTimeLimit = 5 * time.Second
 	commitPriceBatchSizeLimit = 100
 )
+
+func (s *oracleSvc) composePriceFeedMsgs(priceBatch []*PriceData) (results []cosmtypes.Msg) {
+	msg := &oracletypes.MsgRelayPriceFeedPrice{
+		Sender: s.cosmosClient.FromAddress().String(),
+	}
+
+	for _, priceData := range priceBatch {
+		if priceData.OracleType != oracletypes.OracleType_PriceFeed {
+			continue
+		}
+
+		msg.Base = append(msg.Base, priceData.Ticker.Base())
+		msg.Quote = append(msg.Quote, priceData.Ticker.Quote())
+		msg.Price = append(msg.Price, cosmtypes.MustNewDecFromStr(priceData.Price.String()))
+	}
+
+	if len(msg.Base) > 0 {
+		return []cosmtypes.Msg{msg}
+	}
+
+	return nil
+}
+
+func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
+	if len(priceBatch) == 0 {
+		return nil
+	}
+
+	providerToMsg := make(map[string]*oracletypes.MsgRelayProviderPrices)
+	for _, priceData := range priceBatch {
+		if priceData.OracleType != oracletypes.OracleType_Provider {
+			continue
+		}
+
+		provider := strings.ToLower(priceData.ProviderName)
+		msg, exist := providerToMsg[provider]
+		if !exist {
+			msg = &oracletypes.MsgRelayProviderPrices{
+				Sender:   s.cosmosClient.FromAddress().String(),
+				Provider: priceData.ProviderName,
+			}
+			providerToMsg[provider] = msg
+		}
+
+		msg.Symbols = append(msg.Symbols, priceData.Symbol)
+		msg.Prices = append(msg.Prices, cosmtypes.MustNewDecFromStr(priceData.Price.String()))
+	}
+
+	for _, msg := range providerToMsg {
+		result = append(result, msg)
+	}
+	return result
+}
+
+func (s *oracleSvc) composeMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
+	result = append(result, s.composePriceFeedMsgs(priceBatch)...)
+	result = append(result, s.composeProviderFeedMsgs(priceBatch)...)
+	return result
+}
 
 func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 	expirationTimer := time.NewTimer(commitPriceBatchTimeLimit)
@@ -309,37 +342,31 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			"timeout":    timeout,
 		})
 
-		msg := &oracletypes.MsgRelayPriceFeedPrice{
-			Sender: s.cosmosClient.FromAddress().String(),
-			Base:   make([]string, 0, len(currentBatch)),
-			Quote:  make([]string, 0, len(currentBatch)),
-			Price:  make([]cosmtypes.Dec, 0, len(currentBatch)),
-		}
-
-		for _, priceData := range currentBatch {
-			msg.Base = append(msg.Base, priceData.Ticker.Base())
-			msg.Quote = append(msg.Quote, priceData.Ticker.Quote())
-			msg.Price = append(msg.Price, cosmtypes.MustNewDecFromStr(priceData.Price.String()))
+		msgs := s.composeMsgs(currentBatch)
+		if len(msgs) == 0 {
+			batchLog.Debugf("pipeline composed no messages, so do nothing")
+			return
 		}
 
 		ts := time.Now()
-		txResp, err := s.cosmosClient.SyncBroadcastMsg(msg)
+		txResp, err := s.cosmosClient.SyncBroadcastMsg(msgs...)
 		if err != nil {
 			metrics.ReportFuncError(s.svcTags)
 			batchLog.WithError(err).Errorln("failed to SyncBroadcastMsg")
 			return
 		}
 
-		if txResp.Code != 0 {
-			batchLog.WithFields(log.Fields{
-				"hash":     txResp.TxHash,
-				"err_code": txResp.Code,
-			}).Errorf("set price Tx error: %s", txResp.String())
+		if txResp.TxResponse != nil {
+			if txResp.TxResponse.Code != 0 {
+				batchLog.WithFields(log.Fields{
+					"hash":     txResp.TxResponse.TxHash,
+					"err_code": txResp.TxResponse.Code,
+				}).Errorf("set price Tx error: %s", txResp.String())
 
-			return
+				return
+			}
+			batchLog.WithField("hash", txResp.TxResponse.TxHash).Infoln("sent Tx in", time.Since(ts))
 		}
-
-		batchLog.WithField("hash", txResp.TxHash).Infoln("sent Tx in", time.Since(ts))
 	}
 
 	for {
@@ -365,7 +392,6 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			if len(pricesBatch) >= commitPriceBatchSizeLimit {
 				prevBatch := resetBatch()
 				submitBatch(prevBatch, false)
-
 			}
 		case <-expirationTimer.C:
 			prevBatch := resetBatch()

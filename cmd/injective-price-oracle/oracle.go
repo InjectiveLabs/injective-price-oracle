@@ -2,21 +2,24 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	cli "github.com/jawher/mow.cli"
 	"github.com/pkg/errors"
-	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/xlab/closer"
 	log "github.com/xlab/suplog"
 
-	chainclient "github.com/InjectiveLabs/sdk-go/chain/client"
+	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
+	"github.com/InjectiveLabs/sdk-go/client/common"
 
 	"github.com/InjectiveLabs/injective-price-oracle/oracle"
 )
@@ -31,6 +34,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		cosmosGRPC      *string
 		tendermintRPC   *string
 		cosmosGasPrices *string
+		networkNode     *string
 
 		// Cosmos Key Management
 		cosmosKeyringDir     *string
@@ -60,6 +64,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		&cosmosGRPC,
 		&tendermintRPC,
 		&cosmosGasPrices,
+		&networkNode,
 	)
 
 	initCosmosKeyOptions(
@@ -104,33 +109,35 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Fatalln("cannot really use Ledger for oracle service loop, since signatures msut be realtime")
 		}
 
-		senderAddress, cosmosKeyring, err := initCosmosKeyring(
-			cosmosKeyringDir,
-			cosmosKeyringAppName,
-			cosmosKeyringBackend,
-			cosmosKeyFrom,
-			cosmosKeyPassphrase,
-			cosmosPrivKey,
-			cosmosUseLedger,
+		networkNodeSplit := strings.Split(*networkNode, ",")
+		networkStr, node := networkNodeSplit[0], networkNodeSplit[1]
+		network := common.LoadNetwork(networkStr, node)
+
+		senderAddress, cosmosKeyring, err := chainclient.InitCosmosKeyring(
+			*cosmosKeyringDir,
+			*cosmosKeyringAppName,
+			*cosmosKeyringBackend,
+			*cosmosKeyFrom,
+			*cosmosKeyPassphrase,
+			*cosmosPrivKey,
+			*cosmosUseLedger,
 		)
 		if err != nil {
 			log.WithError(err).Fatalln("failed to init Cosmos keyring")
 		}
 
-		log.Infoln("using Cosmos Sender", senderAddress.String())
-
-		clientCtx, err := chainclient.NewClientContext(*cosmosChainID, senderAddress.String(), cosmosKeyring)
+		log.Infoln("using Injective Sender", senderAddress.String())
+		clientCtx, err := chainclient.NewClientContext(network.ChainId, senderAddress.String(), cosmosKeyring)
 		if err != nil {
 			log.WithError(err).Fatalln("failed to initialize cosmos client context")
 		}
-		clientCtx = clientCtx.WithNodeURI(*tendermintRPC)
-		tmRPC, err := rpchttp.New(*tendermintRPC, "/websocket")
+		clientCtx = clientCtx.WithNodeURI(network.TmEndpoint)
+		tmRPC, err := rpchttp.New(network.TmEndpoint, "/websocket")
 		if err != nil {
 			log.WithError(err).Fatalln("failed to connect to tendermint RPC")
 		}
 		clientCtx = clientCtx.WithClient(tmRPC)
-
-		cosmosClient, err := chainclient.NewCosmosClient(clientCtx, *cosmosGRPC, chainclient.OptionGasPrices(*cosmosGasPrices))
+		cosmosClient, err := chainclient.NewChainClient(clientCtx, network)
 		if err != nil {
 			log.WithError(err).WithFields(log.Fields{
 				"endpoint": *cosmosGRPC,
@@ -143,11 +150,12 @@ func oracleCmd(cmd *cli.Cmd) {
 		log.Infoln("waiting for GRPC services")
 		time.Sleep(1 * time.Second)
 
-		daemonWaitCtx, cancelWait := context.WithTimeout(context.Background(), time.Minute)
+		daemonWaitCtx, cancelWait := context.WithTimeout(context.Background(), 10*time.Second)
 		daemonConn := cosmosClient.QueryClient()
-		waitForService(daemonWaitCtx, daemonConn)
+		if err := waitForService(daemonWaitCtx, daemonConn); err != nil {
+			panic(fmt.Errorf("failed to wait for cosmos client connection: %w", err))
+		}
 		cancelWait()
-
 		feedProviderConfigs := map[oracle.FeedProvider]interface{}{
 			oracle.FeedProviderBinance: &oracle.BinanceEndpointConfig{
 				BaseURL: *binanceBaseURL,

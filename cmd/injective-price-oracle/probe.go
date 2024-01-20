@@ -44,6 +44,7 @@ func probeCmd(cmd *cli.Cmd) {
 		pullerLogger := log.WithFields(log.Fields{
 			"provider_name": pricePuller.ProviderName(),
 			"symbol":        pricePuller.Symbol(),
+			"oracle_type":   pricePuller.OracleType().String(),
 		})
 
 		answer, err := pricePuller.PullPrice(context.Background())

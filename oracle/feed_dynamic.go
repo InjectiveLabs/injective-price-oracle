@@ -15,6 +15,7 @@ import (
 
 	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 	"github.com/InjectiveLabs/metrics"
+	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 )
 
 type DynamicFeedConfig struct {
@@ -22,6 +23,7 @@ type DynamicFeedConfig struct {
 	Ticker            string `toml:"ticker"`
 	PullInterval      string `toml:"pullInterval"`
 	ObservationSource string `toml:"observationSource"`
+	OracleType        string `toml:"oracleType"`
 }
 
 func ParseDynamicFeedConfig(body []byte) (*DynamicFeedConfig, error) {
@@ -70,11 +72,24 @@ func NewDynamicPriceFeed(cfg *DynamicFeedConfig) (PricePuller, error) {
 		pullInterval = interval
 	}
 
+	var oracleType oracletypes.OracleType
+	if cfg.OracleType == "" {
+		oracleType = oracletypes.OracleType_PriceFeed
+	} else {
+		tmpType, exist := oracletypes.OracleType_value[cfg.OracleType]
+		if !exist {
+			return nil, fmt.Errorf("oracle type does not exist: %s", cfg.OracleType)
+		}
+
+		oracleType = oracletypes.OracleType(tmpType)
+	}
+
 	feed := &dynamicPriceFeed{
 		ticker:       cfg.Ticker,
 		providerName: cfg.ProviderName,
 		interval:     pullInterval,
 		dotDagSource: cfg.ObservationSource,
+		oracleType:   oracleType,
 
 		logger: log.WithFields(log.Fields{
 			"svc":      "oracle",
@@ -100,6 +115,8 @@ type dynamicPriceFeed struct {
 
 	logger  log.Logger
 	svcTags metrics.Tags
+
+	oracleType oracletypes.OracleType
 }
 
 func (f *dynamicPriceFeed) Interval() time.Duration {
@@ -118,6 +135,13 @@ func (f *dynamicPriceFeed) Provider() FeedProvider {
 
 func (f *dynamicPriceFeed) ProviderName() string {
 	return f.providerName
+}
+
+func (f *dynamicPriceFeed) OracleType() oracletypes.OracleType {
+	if f.oracleType == oracletypes.OracleType_Unspecified {
+		return oracletypes.OracleType_PriceFeed
+	}
+	return f.oracleType
 }
 
 func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
