@@ -49,6 +49,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		// External Feeds params
 		dynamicFeedsDir *string
 		binanceBaseURL  *string
+		storkFeedsDir   *string
 
 		// Metrics
 		statsdPrefix   *string
@@ -82,6 +83,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		cmd,
 		&binanceBaseURL,
 		&dynamicFeedsDir,
+		&storkFeedsDir,
 	)
 
 	initStatsdOptions(
@@ -201,12 +203,52 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Infof("found %d dynamic feed configs", len(dynamicFeedConfigs))
 		}
 
+		storkFeedConfigs := make([]*oracle.StorkFeedConfig, 0, 10)
+		if len(*storkFeedsDir) > 0 {
+			err := filepath.WalkDir(*storkFeedsDir, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				} else if d.IsDir() {
+					return nil
+				} else if filepath.Ext(path) != ".toml" {
+					return nil
+				}
+
+				cfgBody, err := ioutil.ReadFile(path)
+				if err != nil {
+					err = errors.Wrapf(err, "failed to read dynamic feed config")
+					return err
+				}
+
+				feedCfg, err := oracle.ParseStorkFeedConfig(cfgBody)
+				if err != nil {
+					log.WithError(err).WithFields(log.Fields{
+						"filename": d.Name(),
+					}).Errorln("failed to parse dynamic feed config")
+					return nil
+				}
+
+				storkFeedConfigs = append(storkFeedConfigs, feedCfg)
+
+				return nil
+			})
+
+			if err != nil {
+				err = errors.Wrapf(err, "dynamic feeds dir is specified, but failed to read from it: %s", *dynamicFeedsDir)
+				log.WithError(err).Fatalln("failed to load dynamic feeds")
+				return
+			}
+
+			log.Infof("found %d dynamic feed configs", len(dynamicFeedConfigs))
+		}
+
 		svc, err := oracle.NewService(
 			cosmosClient,
 			exchangetypes.NewQueryClient(daemonConn),
 			oracletypes.NewQueryClient(daemonConn),
 			feedProviderConfigs,
 			dynamicFeedConfigs,
+			storkFeedConfigs,
 		)
 		if err != nil {
 			log.Fatalln(err)

@@ -23,6 +23,9 @@ type PriceData struct {
 	// Price is the reported price by feed integarion
 	Price decimal.Decimal
 
+	// List Asset pairs - for Stork Oracle
+	AssetPair oracletypes.AssetPair
+
 	// Timestamp of the report
 	Timestamp time.Time
 

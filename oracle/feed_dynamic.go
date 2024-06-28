@@ -225,3 +225,7 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 
 	return price, nil
 }
+
+func (f *dynamicPriceFeed) PullAssetPair(ctx context.Context) (assetPair oracletypes.AssetPair, err error){
+	return oracletypes.AssetPair{}, nil
+}

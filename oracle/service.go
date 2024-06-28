@@ -6,7 +6,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"time"
-
+    math "cosmossdk.io/math"
 	cosmtypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -33,6 +33,8 @@ type PricePuller interface {
 	// PullPrice method must be implemented in order to get a price
 	// from external source, handled by PricePuller.
 	PullPrice(ctx context.Context) (price decimal.Decimal, err error)
+	// PullAssetPair method used to retrieve asset pair when using stork Oracle API
+	PullAssetPair(ctx context.Context) (assetPair oracletypes.AssetPair, err error)
 	OracleType() oracletypes.OracleType
 }
 
@@ -49,6 +51,7 @@ type MultiPricePuller interface {
 type oracleSvc struct {
 	pricePullers        map[string]PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
+	supportedStorkFeeds map[string]StorkFeedConfig
 	feedProviderConfigs map[FeedProvider]interface{}
 	cosmosClient        chainclient.ChainClient
 	exchangeQueryClient exchangetypes.QueryClient
@@ -138,6 +141,7 @@ func NewService(
 	oracleQueryClient oracletypes.QueryClient,
 	feedProviderConfigs map[FeedProvider]interface{},
 	dynamicFeedConfigs []*DynamicFeedConfig,
+	storkFeedConfigs []*StorkFeedConfig,
 ) (Service, error) {
 	svc := &oracleSvc{
 		cosmosClient:        cosmosClient,
@@ -158,6 +162,11 @@ func NewService(
 			FeedProvider:  FeedProviderDynamic,
 			DynamicConfig: feedCfg,
 		}
+	}
+	// add supportedStorkFeeds
+	svc.supportedStorkFeeds = map[string]StorkFeedConfig{}
+	for _, feedCfg := range storkFeedConfigs {
+		svc.supportedStorkFeeds[feedCfg.Ticker] = *feedCfg
 	}
 
 	svc.pricePullers = map[string]PricePuller{}
@@ -216,29 +225,60 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 		case <-t.C:
 			ctx, cancelFn := context.WithTimeout(ctx, maxRespTime)
 			defer cancelFn()
+			// define price and asset pair to tracking late
+			var err error
+			price := zeroPrice
+			assetPair := oracletypes.AssetPair{}
 
-			result, err := pricePuller.PullPrice(ctx)
-			if err != nil {
-				metrics.ReportFuncError(s.svcTags)
-				feedLogger.WithError(err).Warningln("retrying PullPrice after error")
-
-				for i := 0; i < maxRetriesPerInterval; i++ {
-					if result, err = pricePuller.PullPrice(ctx); err != nil {
-						time.Sleep(time.Second)
-						continue
-					}
-					break
-				}
-
+			if pricePuller.OracleType() == oracletypes.OracleType_Stork {
+				assetPair, err = pricePuller.PullAssetPair(ctx)
 				if err != nil {
 					metrics.ReportFuncError(s.svcTags)
-					feedLogger.WithFields(log.Fields{
-						"symbol":  symbol,
-						"retries": maxRetriesPerInterval,
-					}).WithError(err).Errorln("failed to fetch price")
+					feedLogger.WithError(err).Warningln("retrying PullAssetPair after error")
 
-					t.Reset(pricePuller.Interval())
-					continue
+					for i := 0; i < maxRetriesPerInterval; i++ {
+						if assetPair, err = pricePuller.PullAssetPair(ctx); err != nil {
+							time.Sleep(time.Second)
+							continue
+						}
+						break
+					}
+
+					if err != nil {
+						metrics.ReportFuncError(s.svcTags)
+						feedLogger.WithFields(log.Fields{
+							"symbol":  symbol,
+							"retries": maxRetriesPerInterval,
+						}).WithError(err).Errorln("failed to fetch asset pair")
+
+						t.Reset(pricePuller.Interval())
+						continue
+					}
+				}
+			} else {
+				price, err = pricePuller.PullPrice(ctx)
+				if err != nil {
+					metrics.ReportFuncError(s.svcTags)
+					feedLogger.WithError(err).Warningln("retrying PullPrice after error")
+
+					for i := 0; i < maxRetriesPerInterval; i++ {
+						if price, err = pricePuller.PullPrice(ctx); err != nil {
+							time.Sleep(time.Second)
+							continue
+						}
+						break
+					}
+
+					if err != nil {
+						metrics.ReportFuncError(s.svcTags)
+						feedLogger.WithFields(log.Fields{
+							"symbol":  symbol,
+							"retries": maxRetriesPerInterval,
+						}).WithError(err).Errorln("failed to fetch price")
+
+						t.Reset(pricePuller.Interval())
+						continue
+					}
 				}
 			}
 
@@ -247,7 +287,8 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 				Symbol:       symbol,
 				Timestamp:    time.Now().UTC(),
 				ProviderName: pricePuller.ProviderName(),
-				Price:        result,
+				Price:        price,
+				AssetPair:    assetPair,
 				OracleType:   pricePuller.OracleType(),
 			}
 
@@ -273,7 +314,7 @@ func (s *oracleSvc) composePriceFeedMsgs(priceBatch []*PriceData) (results []cos
 
 		msg.Base = append(msg.Base, priceData.Ticker.Base())
 		msg.Quote = append(msg.Quote, priceData.Ticker.Quote())
-		msg.Price = append(msg.Price, cosmtypes.MustNewDecFromStr(priceData.Price.String()))
+		msg.Price = append(msg.Price, math.LegacyMustNewDecFromStr(priceData.Price.String()))
 	}
 
 	if len(msg.Base) > 0 {
@@ -305,7 +346,7 @@ func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []c
 		}
 
 		msg.Symbols = append(msg.Symbols, priceData.Symbol)
-		msg.Prices = append(msg.Prices, cosmtypes.MustNewDecFromStr(priceData.Price.String()))
+		msg.Prices = append(msg.Prices, math.LegacyMustNewDecFromStr(priceData.Price.String()))
 	}
 
 	for _, msg := range providerToMsg {
@@ -314,9 +355,29 @@ func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []c
 	return result
 }
 
+func (s *oracleSvc) composeStorkOracleMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
+	msg := &oracletypes.MsgRelayStorkMessage{
+		Sender: s.cosmosClient.FromAddress().String(),
+	}
+
+	for _, priceData := range priceBatch {
+		if priceData.OracleType != oracletypes.OracleType_Stork {
+			continue
+		}
+
+		msg.AssetPairs = append(msg.AssetPairs, &priceData.AssetPair)
+	}
+	if len(msg.AssetPairs) > 0 {
+		return []cosmtypes.Msg{msg}
+	}
+
+	return nil
+}
+
 func (s *oracleSvc) composeMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
 	result = append(result, s.composePriceFeedMsgs(priceBatch)...)
 	result = append(result, s.composeProviderFeedMsgs(priceBatch)...)
+	result = append(result, s.composeStorkOracleMsgs(priceBatch)...)
 	return result
 }
 
