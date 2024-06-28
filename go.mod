@@ -5,6 +5,7 @@ go 1.22
 toolchain go1.22.4
 
 require (
+	cosmossdk.io/math v1.3.0
 	github.com/InjectiveLabs/metrics v0.0.6
 	github.com/InjectiveLabs/sdk-go v1.50.2-0.20240618153604-17a817c262fb
 	github.com/cometbft/cometbft v0.38.7
@@ -32,7 +33,6 @@ require (
 	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
 	cosmossdk.io/errors v1.0.1 // indirect
 	cosmossdk.io/log v1.3.1 // indirect
-	cosmossdk.io/math v1.3.0 // indirect
 	cosmossdk.io/store v1.1.0 // indirect
 	cosmossdk.io/x/evidence v0.1.0 // indirect
 	cosmossdk.io/x/feegrant v0.1.0 // indirect
@@ -223,6 +223,8 @@ require (
 )
 
 replace (
+	cosmossdk.io/store => github.com/InjectiveLabs/cosmos-sdk/store v1.1.1-0.20240522173845-46ef88f66790
+
 	github.com/CosmWasm/wasmd => github.com/InjectiveLabs/wasmd v0.51.1-0.20240517110802-c05574f2352f
 	github.com/bandprotocol/bandchain-packet => github.com/InjectiveLabs/bandchain-packet v0.0.4-0.20230327115226-35199d4659d5
 	github.com/btcsuite/btcutil => github.com/btcsuite/btcutil v1.0.2

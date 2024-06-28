@@ -1,0 +1,6 @@
+provider = "binance_v3"
+ticker = "INJ/USDT"
+pullInterval = "1m"
+oracleType = "Stork"
+serverHeader = "wscat -c 'wss://dev.api.stork-oracle.network/evm/subscribe' --auth ''"
+data = ""
