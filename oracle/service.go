@@ -6,7 +6,8 @@ import (
 	"runtime/debug"
 	"strings"
 	"time"
-    math "cosmossdk.io/math"
+
+	math "cosmossdk.io/math"
 	cosmtypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -78,6 +79,7 @@ type FeedProvider string
 const (
 	FeedProviderDynamic FeedProvider = "_"
 	FeedProviderBinance FeedProvider = "binance"
+	FeedProviderStork   FeedProvider = "stork"
 
 	// TODO: add your native implementations here
 )
@@ -180,6 +182,16 @@ func NewService(
 		svc.pricePullers[ticker] = pricePuller
 	}
 
+	for _, feedCfg := range storkFeedConfigs {
+		ticker := feedCfg.Ticker
+		pricePuller, err := NewStorkPriceFeed(feedCfg)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to init stork price feed for ticker %s", ticker)
+			return nil, err
+		}
+		svc.pricePullers[ticker] = pricePuller
+	}
+
 	svc.logger.Infof("initialized %d price pullers", len(svc.pricePullers))
 	return svc, nil
 }
@@ -194,7 +206,7 @@ func (s *oracleSvc) Start() (err error) {
 
 		for ticker, pricePuller := range s.pricePullers {
 			switch pricePuller.Provider() {
-			case FeedProviderBinance,
+			case FeedProviderBinance, FeedProviderStork,
 				FeedProviderDynamic:
 
 				go s.processSetPriceFeed(ticker, pricePuller.ProviderName(), pricePuller, dataC)

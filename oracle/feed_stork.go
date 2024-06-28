@@ -112,7 +112,7 @@ func (f *storkPriceFeed) Symbol() string {
 }
 
 func (f *storkPriceFeed) Provider() FeedProvider {
-	return "stork"
+	return FeedProviderStork
 }
 
 func (f *storkPriceFeed) ProviderName() string {

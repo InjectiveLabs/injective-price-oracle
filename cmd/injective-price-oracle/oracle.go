@@ -216,7 +216,7 @@ func oracleCmd(cmd *cli.Cmd) {
 
 				cfgBody, err := ioutil.ReadFile(path)
 				if err != nil {
-					err = errors.Wrapf(err, "failed to read dynamic feed config")
+					err = errors.Wrapf(err, "failed to read stork feed config")
 					return err
 				}
 
@@ -224,7 +224,7 @@ func oracleCmd(cmd *cli.Cmd) {
 				if err != nil {
 					log.WithError(err).WithFields(log.Fields{
 						"filename": d.Name(),
-					}).Errorln("failed to parse dynamic feed config")
+					}).Errorln("failed to parse stork feed config")
 					return nil
 				}
 
@@ -234,12 +234,12 @@ func oracleCmd(cmd *cli.Cmd) {
 			})
 
 			if err != nil {
-				err = errors.Wrapf(err, "dynamic feeds dir is specified, but failed to read from it: %s", *dynamicFeedsDir)
-				log.WithError(err).Fatalln("failed to load dynamic feeds")
+				err = errors.Wrapf(err, "stork feeds dir is specified, but failed to read from it: %s", *dynamicFeedsDir)
+				log.WithError(err).Fatalln("failed to load stork feeds")
 				return
 			}
 
-			log.Infof("found %d dynamic feed configs", len(dynamicFeedConfigs))
+			log.Infof("found %d stork feed configs", len(storkFeedConfigs))
 		}
 
 		svc, err := oracle.NewService(
