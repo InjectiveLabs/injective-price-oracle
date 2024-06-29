@@ -1,15 +1,19 @@
 package oracle
 
 import (
-	"fmt"
-	"time"
 	"context"
+	"fmt"
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	"github.com/gorilla/websocket"
 	toml "github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	log "github.com/xlab/suplog"
+	"net/http"
+	"net/url"
+	"time"
+	"encoding/base64"
 )
 
 var _ PricePuller = &storkPriceFeed{}
@@ -18,7 +22,8 @@ type StorkFeedConfig struct {
 	ProviderName string `toml:"provider"`
 	Ticker       string `toml:"ticker"`
 	PullInterval string `toml:"pullInterval"`
-	SerVerHeader string `toml:"serverHeader"`
+	Url          string `toml:"url"`
+	Header       string `toml:"header"`
 	Data         string `toml:"data"`
 	OracleType   string `toml:"oracleType"`
 }
@@ -30,7 +35,8 @@ type storkPriceFeed struct {
 	ticker       string
 	providerName string
 	interval     time.Duration
-	serverHeader string
+	url          string
+	header       string
 	data         string
 
 	runNonce int32
@@ -85,7 +91,8 @@ func NewStorkPriceFeed(cfg *StorkFeedConfig) (PricePuller, error) {
 		ticker:       cfg.Ticker,
 		providerName: cfg.ProviderName,
 		interval:     pullInterval,
-		serverHeader: cfg.SerVerHeader,
+		url:          cfg.Url,
+		header:       cfg.Header,
 		data:         cfg.Data,
 		oracleType:   oracleType,
 
@@ -123,16 +130,40 @@ func (f *storkPriceFeed) OracleType() oracletypes.OracleType {
 	return oracletypes.OracleType_Stork
 }
 
-func (f *storkPriceFeed) PullAssetPair(ctx context.Context) (assetPair oracletypes.AssetPair, err error){
+func (f *storkPriceFeed) PullAssetPair(ctx context.Context) (assetPair oracletypes.AssetPair, err error) {
 	metrics.ReportFuncCall(f.svcTags)
 	doneFn := metrics.ReportFuncTiming(f.svcTags)
 	defer doneFn()
 
-	// TODO: Add logic support pull data from stork websocket
+	// Parse the URL
+	u, err := url.Parse(f.url)
+	if err != nil {
+		log.Fatal("Error parsing URL:", err)
+	}
+	header := http.Header{}
+	header.Add("Authorization", "Basic " + base64.StdEncoding.EncodeToString([]byte(f.header)))
 
+
+	dialer := websocket.DefaultDialer
+	dialer.EnableCompression = true
+
+	// Connect to the WebSocket server
+	conn, resp, err := dialer.Dial(u.String(), header)
+	if err != nil {
+		if resp != nil {
+            log.Printf("Handshake failed with status: %d\n", resp.StatusCode)
+            for k, v := range resp.Header {
+                log.Printf("%s: %v\n", k, v)
+            }
+        }
+        log.Fatal("Error connecting to WebSocket:", err)
+	}
+	defer conn.Close()
+
+	log.Println("Connected to WebSocket server")
 
 	return oracletypes.AssetPair{}, nil
-} 
+}
 
 func (f *storkPriceFeed) PullPrice(ctx context.Context) (
 	price decimal.Decimal,
