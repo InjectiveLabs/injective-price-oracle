@@ -300,7 +300,7 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 				Timestamp:    time.Now().UTC(),
 				ProviderName: pricePuller.ProviderName(),
 				Price:        price,
-				AssetPair:    assetPair,
+				AssetPair:    &assetPair,
 				OracleType:   pricePuller.OracleType(),
 			}
 
@@ -377,7 +377,7 @@ func (s *oracleSvc) composeStorkOracleMsgs(priceBatch []*PriceData) (result []co
 			continue
 		}
 
-		msg.AssetPairs = append(msg.AssetPairs, &priceData.AssetPair)
+		msg.AssetPairs = append(msg.AssetPairs, priceData.AssetPair)
 	}
 	if len(msg.AssetPairs) > 0 {
 		return []cosmtypes.Msg{msg}

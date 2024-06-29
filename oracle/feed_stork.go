@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
-	"os/signal"
-	"syscall"
+	"strings"
 	"time"
 
+	"cosmossdk.io/math"
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
 	toml "github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
@@ -43,8 +43,6 @@ type storkPriceFeed struct {
 	url          string
 	header       string
 	message      string
-
-	runNonce int32
 
 	logger  log.Logger
 	svcTags metrics.Tags
@@ -135,7 +133,8 @@ func (f *storkPriceFeed) OracleType() oracletypes.OracleType {
 	return oracletypes.OracleType_Stork
 }
 
-func (f *storkPriceFeed) PullAssetPair(ctx context.Context) (assetPair oracletypes.AssetPair, err error) {
+// PullAssetPair pulls asset pair for an asset id
+func (f *storkPriceFeed) PullAssetPair(ctx context.Context) (assetPairs oracletypes.AssetPair, err error) {
 	metrics.ReportFuncCall(f.svcTags)
 	doneFn := metrics.ReportFuncTiming(f.svcTags)
 	defer doneFn()
@@ -144,6 +143,7 @@ func (f *storkPriceFeed) PullAssetPair(ctx context.Context) (assetPair oracletyp
 	u, err := url.Parse(f.url)
 	if err != nil {
 		log.Fatal("Error parsing URL:", err)
+		return oracletypes.AssetPair{}, nil
 	}
 	header := http.Header{}
 	header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(f.header)))
@@ -161,47 +161,44 @@ func (f *storkPriceFeed) PullAssetPair(ctx context.Context) (assetPair oracletyp
 			}
 		}
 		log.Fatal("Error connecting to WebSocket:", err)
+		return oracletypes.AssetPair{}, nil
 	}
 	defer conn.Close()
 
 	log.Println("Connected to WebSocket server:", resp.Status)
 
-	// create ctrl C signal call
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
-
 	err = conn.WriteMessage(websocket.TextMessage, []byte(f.message))
 	if err != nil {
 		log.Fatal("Error writing message:", err)
+		return oracletypes.AssetPair{}, nil
 	}
 
-	// Infinite loop
-	go func() {
-		for {
-			// count := fasle
-			var msgResp messageResponse
-			_, message, err := conn.ReadMessage()
-			if err != nil {
-				log.Println("Error reading message:", err)
-				return
-			}
-			// count++
-			time.Sleep(1 * time.Second)
-			log.Printf("Received message: %s\n", message)
-			// if count !=
-			if err = json.Unmarshal(message, &msgResp); err != nil {
-				log.Println("Error unmarshal message:", err)
-				return
-			}
-			println("check message type:", msgResp.Type)
+	var msgNeed []byte
+	count := 0
+	for count < 2 {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("Error reading message:", err)
+			return oracletypes.AssetPair{}, nil
+
 		}
+		msgNeed = message
+		count += 1
+	}
 
-	}()
-
-	<-interrupt
 	log.Println("Interrupt received, closing connection")
 
-	return oracletypes.AssetPair{}, nil
+	var msgResp messageResponse
+	if err = json.Unmarshal(msgNeed, &msgResp); err != nil {
+		return oracletypes.AssetPair{}, nil
+	}
+	assetIds := make([]string, 0)
+	for key := range msgResp.Data {
+		assetIds = append(assetIds, key)
+	}
+	assetPairs = ConvertDataToAssetPair(msgResp.Data[assetIds[0]], assetIds[0])
+
+	return assetPairs, nil
 }
 
 func (f *storkPriceFeed) PullPrice(ctx context.Context) (
@@ -209,6 +206,42 @@ func (f *storkPriceFeed) PullPrice(ctx context.Context) (
 	err error,
 ) {
 	return zeroPrice, nil
+}
+
+// ConvertDataToAssetPair converts data get from websocket to list of asset pairs
+func ConvertDataToAssetPair(data Data, assetId string) (result oracletypes.AssetPair) {
+	signedPricesOfAssetPair := []*oracletypes.SignedPriceOfAssetPair{}
+	for i := range data.SignedPrices {
+		newSignedPriceAssetPair := ConvertSignedPrice(data.SignedPrices[i])
+		signedPricesOfAssetPair = append(signedPricesOfAssetPair, &newSignedPriceAssetPair)
+	}
+	result.SignedPrices = signedPricesOfAssetPair
+	result.AssetId = assetId
+
+	return result
+}
+
+// ConvertSignedPrice converts signed price to SignedPriceOfAssetPair of Stork
+func ConvertSignedPrice(signeds SignedPrice) oracletypes.SignedPriceOfAssetPair {
+	var signedPriceOfAssetPair oracletypes.SignedPriceOfAssetPair
+
+	signature := CombineSignatureToString(signeds.TimestampedSignature.Signature)
+
+	signedPriceOfAssetPair.Signature = common.Hex2Bytes(signature)
+	signedPriceOfAssetPair.PublisherKey = signeds.PublisherKey
+	signedPriceOfAssetPair.Timestamp = signeds.TimestampedSignature.Timestamp
+	signedPriceOfAssetPair.Price = signeds.Price
+
+	return signedPriceOfAssetPair
+}
+
+// CombineSignatureToString combines a signature to a string
+func CombineSignatureToString(signature Signature) (result string) {
+	prunedR := strings.TrimPrefix(signature.R, "0x")
+	prunedS := strings.TrimPrefix(signature.S, "0x")
+	prunedV := strings.TrimPrefix(signature.V, "0x")
+
+	return prunedR + prunedS + prunedV
 }
 
 type messageResponse struct {
@@ -230,13 +263,13 @@ type SignedPrice struct {
 	PublisherKey         string               `json:"publisher_key"`
 	ExternalAssetID      string               `json:"external_asset_id"`
 	SignatureType        string               `json:"signature_type"`
-	Price                string               `json:"price"`
+	Price                math.LegacyDec       `json:"price"`
 	TimestampedSignature TimestampedSignature `json:"timestamped_signature"`
 }
 
 type TimestampedSignature struct {
 	Signature Signature `json:"signature"`
-	Timestamp int64     `json:"timestamp"`
+	Timestamp uint64    `json:"timestamp"`
 	MsgHash   string    `json:"msg_hash"`
 }
 
