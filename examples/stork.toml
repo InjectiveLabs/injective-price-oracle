@@ -1,5 +1,5 @@
 provider = "Stork"
-ticker = "INJ/USDT"
+ticker = "BTCUSD"
 pullInterval = "1m"
 oracleType = "Stork"
 url = "wss://dev.api.stork-oracle.network/evm/subscribe"

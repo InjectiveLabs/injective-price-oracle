@@ -451,15 +451,23 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 				submitBatch(prevBatch, false)
 				return
 			}
-
-			if priceData.Price.IsZero() || priceData.Price.IsNegative() {
-				s.logger.WithFields(log.Fields{
-					"ticker":   priceData.Ticker,
-					"provider": priceData.ProviderName,
-				}).Errorln("got negative or zero price, skipping")
-				continue
+			if priceData.OracleType != oracletypes.OracleType_Stork {
+				if priceData.Price.IsZero() || priceData.Price.IsNegative() {
+					s.logger.WithFields(log.Fields{
+						"ticker":   priceData.Ticker,
+						"provider": priceData.ProviderName,
+					}).Errorln("got negative or zero price, skipping")
+					continue
+				}
+			} else {
+				if len(priceData.AssetPair.SignedPrices) == 0 {
+					s.logger.WithFields(log.Fields{
+						"ticker":   priceData.Ticker,
+						"provider": priceData.ProviderName,
+					}).Errorln("got zero signed price for stork oracle, skipping") 
+					continue
+				}
 			}
-
 			pricesBatch = append(pricesBatch, priceData)
 
 			if len(pricesBatch) >= commitPriceBatchSizeLimit {
