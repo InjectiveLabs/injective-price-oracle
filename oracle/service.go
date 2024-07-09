@@ -368,7 +368,7 @@ func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []c
 }
 
 func (s *oracleSvc) composeStorkOracleMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
-	msg := &oracletypes.MsgRelayStorkMessage{
+	msg := &oracletypes.MsgRelayStorkPrices{
 		Sender: s.cosmosClient.FromAddress().String(),
 	}
 
