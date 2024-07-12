@@ -229,10 +229,27 @@ func ConvertSignedPrice(signeds SignedPrice) oracletypes.SignedPriceOfAssetPair 
 
 	signedPriceOfAssetPair.Signature = common.Hex2Bytes(signature)
 	signedPriceOfAssetPair.PublisherKey = signeds.PublisherKey
-	signedPriceOfAssetPair.Timestamp = signeds.TimestampedSignature.Timestamp
+	signedPriceOfAssetPair.Timestamp = ConvertTimestampToSecond(signeds.TimestampedSignature.Timestamp)
 	signedPriceOfAssetPair.Price = signeds.Price
 
 	return signedPriceOfAssetPair
+}
+
+func ConvertTimestampToSecond(timestamp uint64) uint64 {
+	switch {
+	// nanosecond
+	case timestamp > 1e18:
+		return timestamp / uint64(1_000_000_000)
+	// microsecond
+	case timestamp > 1e15:
+		return timestamp / uint64(1_000_000)
+	// millisecond
+	case timestamp > 1e12:
+		return timestamp / uint64(1_000)
+	// second
+	default:
+		return timestamp
+	}
 }
 
 // CombineSignatureToString combines a signature to a string
