@@ -148,7 +148,7 @@ func (f *storkPriceFeed) PullAssetPairs(ctx context.Context, conn *websocket.Con
 	if err = json.Unmarshal(msgNeed, &msgResp); err != nil {
 		return []*oracletypes.AssetPair{}, nil
 	}
-	println("check data:", string(msgNeed))
+
 	assetIds := make([]string, 0)
 	for key := range msgResp.Data {
 		assetIds = append(assetIds, key)
