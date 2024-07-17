@@ -225,3 +225,4 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 
 	return price, nil
 }
+
