@@ -9,10 +9,14 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"net/url"
+	"net/http"
+	"encoding/base64"
 
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
+	"github.com/gorilla/websocket"
 	cli "github.com/jawher/mow.cli"
 	"github.com/pkg/errors"
 	"github.com/xlab/closer"
@@ -57,6 +61,10 @@ func oracleCmd(cmd *cli.Cmd) {
 		statsdStuckDur *string
 		statsdMocking  *string
 		statsdDisabled *string
+
+		// Stork Oracle websocket params
+		websocketUrl    *string
+		websocketHeader *string
 	)
 
 	initCosmosOptions(
@@ -95,6 +103,12 @@ func oracleCmd(cmd *cli.Cmd) {
 		&statsdDisabled,
 	)
 
+	initStorkOracleWebSocket(
+		cmd,
+		&websocketUrl,
+		&websocketHeader,
+	)
+	
 	cmd.Action = func() {
 		// ensure a clean exit
 		defer closer.Close()
@@ -242,6 +256,14 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Infof("found %d stork feed configs", len(storkFeedConfigs))
 		}
 
+		storkWebsocket, err := ConnectWebSocket(*websocketUrl, *websocketHeader)
+		if err != nil {
+			err = errors.Wrapf(err, "can not connect with stork oracle websocket")
+			log.WithError(err).Fatalln("failed to load stork feeds")
+			return
+		}
+		log.Info("Connected to stork websocket")
+
 		svc, err := oracle.NewService(
 			cosmosClient,
 			exchangetypes.NewQueryClient(daemonConn),
@@ -249,6 +271,7 @@ func oracleCmd(cmd *cli.Cmd) {
 			feedProviderConfigs,
 			dynamicFeedConfigs,
 			storkFeedConfigs,
+			storkWebsocket,
 		)
 		if err != nil {
 			log.Fatalln(err)
@@ -268,5 +291,36 @@ func oracleCmd(cmd *cli.Cmd) {
 		}()
 
 		closer.Hold()
+	}
+}
+
+func ConnectWebSocket(websocketUrl, urlHeader string) (conn *websocket.Conn, err error) {
+	u, err := url.Parse(websocketUrl)
+	if err != nil {
+		log.Fatal("Error parsing URL:", err)
+		return &websocket.Conn{}, err
+	}
+
+	header := http.Header{}
+	header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(urlHeader)))
+
+	dialer := websocket.DefaultDialer
+	dialer.EnableCompression = true
+	retries := 0
+	for {
+		conn, _, err = websocket.DefaultDialer.Dial(u.String(), header)
+		if err != nil {
+			log.Infof("Failed to connect to WebSocket server: %v", err)
+			retries++
+			if retries > oracle.MaxRetriesReConnectWebSocket {
+				log.Infof("Reached maximum retries (%d), exiting...", oracle.MaxRetriesReConnectWebSocket)
+				return &websocket.Conn{}, err
+			}
+			log.Infof("Retrying in 5s...")
+			time.Sleep(5 * time.Second)
+		} else {
+			log.Infof("Connected to WebSocket server")
+			return conn, nil
+		}
 	}
 }

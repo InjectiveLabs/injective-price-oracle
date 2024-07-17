@@ -200,3 +200,20 @@ func initStatsdOptions(
 		Value:  "true",
 	})
 }
+
+func initStorkOracleWebSocket(
+	cmd *cli.Cmd,
+	websocketUrl    **string,
+	websocketHeader **string,
+) {
+	*websocketUrl = cmd.String(cli.StringOpt{
+		Name: "websocket-url",
+		Desc: "Stork websocket URL",
+		EnvVar: "STORK_WEBSOCKET_URL",
+	})
+	*websocketHeader = cmd.String(cli.StringOpt{
+		Name: "websocket header",
+		Desc: "Stork websocket header",
+		EnvVar: "STORK_WEBSOCKET_HEADER",
+	})
+}

@@ -2,11 +2,8 @@ package oracle
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -27,21 +24,13 @@ type StorkFeedConfig struct {
 	ProviderName string `toml:"provider"`
 	Ticker       string `toml:"ticker"`
 	PullInterval string `toml:"pullInterval"`
-	Url          string `toml:"url"`
-	Header       string `toml:"header"`
 	Message      string `toml:"message"`
 	OracleType   string `toml:"oracleType"`
 }
 
-type StorkConfig struct {
-}
-
 type storkPriceFeed struct {
-	ticker       string
 	providerName string
 	interval     time.Duration
-	url          string
-	header       string
 	message      string
 
 	logger  log.Logger
@@ -91,11 +80,8 @@ func NewStorkPriceFeed(cfg *StorkFeedConfig) (PricePuller, error) {
 	}
 
 	feed := &storkPriceFeed{
-		ticker:       cfg.Ticker,
 		providerName: cfg.ProviderName,
 		interval:     pullInterval,
-		url:          cfg.Url,
-		header:       cfg.Header,
 		message:      cfg.Message,
 		oracleType:   oracleType,
 
@@ -118,7 +104,7 @@ func (f *storkPriceFeed) Interval() time.Duration {
 }
 
 func (f *storkPriceFeed) Symbol() string {
-	return f.ticker
+	return ""
 }
 
 func (f *storkPriceFeed) Provider() FeedProvider {
@@ -134,43 +120,15 @@ func (f *storkPriceFeed) OracleType() oracletypes.OracleType {
 }
 
 // PullAssetPair pulls asset pair for an asset id
-func (f *storkPriceFeed) PullAssetPair(ctx context.Context) (assetPairs oracletypes.AssetPair, err error) {
+func (f *storkPriceFeed) PullAssetPairs(ctx context.Context, conn *websocket.Conn) (assetPairs []*oracletypes.AssetPair, err error) {
 	metrics.ReportFuncCall(f.svcTags)
 	doneFn := metrics.ReportFuncTiming(f.svcTags)
 	defer doneFn()
 
-	// Parse the URL
-	u, err := url.Parse(f.url)
-	if err != nil {
-		log.Fatal("Error parsing URL:", err)
-		return oracletypes.AssetPair{}, nil
-	}
-	header := http.Header{}
-	header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(f.header)))
-
-	dialer := websocket.DefaultDialer
-	dialer.EnableCompression = true
-
-	// Connect to the WebSocket server
-	conn, resp, err := dialer.Dial(u.String(), header)
-	if err != nil {
-		if resp != nil {
-			log.Printf("Handshake failed with status: %d\n", resp.StatusCode)
-			for k, v := range resp.Header {
-				log.Printf("%s: %v\n", k, v)
-			}
-		}
-		log.Fatal("Error connecting to WebSocket:", err)
-		return oracletypes.AssetPair{}, nil
-	}
-	defer conn.Close()
-
-	log.Println("Connected to WebSocket server:", resp.Status)
-
 	err = conn.WriteMessage(websocket.TextMessage, []byte(f.message))
 	if err != nil {
 		log.Fatal("Error writing message:", err)
-		return oracletypes.AssetPair{}, nil
+		return []*oracletypes.AssetPair{}, nil
 	}
 
 	var msgNeed []byte
@@ -179,24 +137,26 @@ func (f *storkPriceFeed) PullAssetPair(ctx context.Context) (assetPairs oraclety
 		_, message, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("Error reading message:", err)
-			return oracletypes.AssetPair{}, nil
+			return []*oracletypes.AssetPair{}, nil
 
 		}
 		msgNeed = message
 		count += 1
 	}
 
-	log.Println("Interrupt received, closing connection")
-
 	var msgResp messageResponse
 	if err = json.Unmarshal(msgNeed, &msgResp); err != nil {
-		return oracletypes.AssetPair{}, nil
+		return []*oracletypes.AssetPair{}, nil
 	}
 	assetIds := make([]string, 0)
 	for key := range msgResp.Data {
 		assetIds = append(assetIds, key)
 	}
-	assetPairs = ConvertDataToAssetPair(msgResp.Data[assetIds[0]], assetIds[0])
+
+	for _, assetId := range assetIds {
+		pair := ConvertDataToAssetPair(msgResp.Data[assetId], assetId)
+		assetPairs = append(assetPairs, &pair)
+	}
 
 	return assetPairs, nil
 }
