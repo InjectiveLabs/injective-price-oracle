@@ -127,7 +127,7 @@ func (f *storkPriceFeed) PullAssetPairs(ctx context.Context, conn *websocket.Con
 
 	err = conn.WriteMessage(websocket.TextMessage, []byte(f.message))
 	if err != nil {
-		log.Fatal("Error writing message:", err)
+		log.Infoln("Error writing message:", err)
 		return []*oracletypes.AssetPair{}, nil
 	}
 
@@ -136,7 +136,7 @@ func (f *storkPriceFeed) PullAssetPairs(ctx context.Context, conn *websocket.Con
 	for count < 2 {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Error reading message:", err)
+			log.Infoln("Error reading message:", err)
 			return []*oracletypes.AssetPair{}, nil
 
 		}
@@ -148,6 +148,7 @@ func (f *storkPriceFeed) PullAssetPairs(ctx context.Context, conn *websocket.Con
 	if err = json.Unmarshal(msgNeed, &msgResp); err != nil {
 		return []*oracletypes.AssetPair{}, nil
 	}
+	println("check data:", string(msgNeed))
 	assetIds := make([]string, 0)
 	for key := range msgResp.Data {
 		assetIds = append(assetIds, key)
