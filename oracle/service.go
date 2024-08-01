@@ -2,6 +2,7 @@ package oracle
 
 import (
 	"context"
+	"cosmossdk.io/math"
 	"fmt"
 	"runtime/debug"
 	"strings"
@@ -273,7 +274,7 @@ func (s *oracleSvc) composePriceFeedMsgs(priceBatch []*PriceData) (results []cos
 
 		msg.Base = append(msg.Base, priceData.Ticker.Base())
 		msg.Quote = append(msg.Quote, priceData.Ticker.Quote())
-		msg.Price = append(msg.Price, cosmtypes.MustNewDecFromStr(priceData.Price.String()))
+		msg.Price = append(msg.Price, math.LegacyMustNewDecFromStr(priceData.Price.String()))
 	}
 
 	if len(msg.Base) > 0 {
@@ -305,7 +306,7 @@ func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []c
 		}
 
 		msg.Symbols = append(msg.Symbols, priceData.Symbol)
-		msg.Prices = append(msg.Prices, cosmtypes.MustNewDecFromStr(priceData.Price.String()))
+		msg.Prices = append(msg.Prices, math.LegacyMustNewDecFromStr(priceData.Price.String()))
 	}
 
 	for _, msg := range providerToMsg {
