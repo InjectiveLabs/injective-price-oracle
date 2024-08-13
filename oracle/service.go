@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	math "cosmossdk.io/math"
+	"cosmossdk.io/math"
 	cosmtypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -103,7 +103,7 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 
 	feeds := make(map[string]PriceFeedConfig)
 
-	sender := s.cosmosClient.FromAddress().String()
+	sender := strings.ToLower(s.cosmosClient.FromAddress().String())
 	res, err := s.oracleQueryClient.PriceFeedPriceStates(ctx, &oracletypes.QueryPriceFeedPriceStatesRequest{})
 	if err != nil {
 		metrics.ReportFuncError(s.svcTags)
@@ -113,7 +113,7 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 	for _, priceFeedState := range res.PriceStates {
 		var found bool
 		for _, relayer := range priceFeedState.Relayers {
-			if strings.ToLower(relayer) == strings.ToLower(sender) {
+			if strings.ToLower(relayer) == sender {
 				found = true
 			}
 		}
@@ -127,7 +127,7 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 			feeds[ticker] = feed
 		} else {
 			s.logger.WithFields(log.Fields{
-				"sender": strings.ToLower(sender),
+				"sender": sender,
 			}).Warningf("current sender is authorized in %s feed, but no corresponding feed config loaded", ticker)
 		}
 	}
@@ -230,19 +230,18 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 		"provider": pricePuller.ProviderName(),
 	})
 
-	ctx := context.Background()
 	symbol := pricePuller.Symbol()
 
 	t := time.NewTimer(5 * time.Second)
 	for {
 		select {
 		case <-t.C:
-			ctx, cancelFn := context.WithTimeout(ctx, maxRespTime)
+			ctx, cancelFn := context.WithTimeout(context.Background(), maxRespTime)
 			defer cancelFn()
 			// define price and asset pair to tracking late
 			var err error
 			price := zeroPrice
-			assetPairs := []*oracletypes.AssetPair{}
+			var assetPairs []*oracletypes.AssetPair
 
 			if pricePuller.OracleType() == oracletypes.OracleType_Stork {
 				storkPricePuller, ok := pricePuller.(*storkPriceFeed)
