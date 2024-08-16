@@ -150,10 +150,6 @@ func (f *binancePriceFeed) PullPrice(ctx context.Context) (
 	return priceResp.Price, nil
 }
 
-func (f *binancePriceFeed) PullAssetPair(_ context.Context) (assetPair oracletypes.AssetPair, err error) {
-	return
-}
-
 type binancePriceResp struct {
 	Symbol string          `json:"symbol"`
 	Price  decimal.Decimal `json:"price"`

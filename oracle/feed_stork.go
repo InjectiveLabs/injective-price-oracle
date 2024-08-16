@@ -120,7 +120,7 @@ func (f *storkPriceFeed) OracleType() oracletypes.OracleType {
 }
 
 // PullAssetPairs pulls asset pair for an asset id
-func (f *storkPriceFeed) PullAssetPairs(_ context.Context, conn *websocket.Conn) (assetPairs []*oracletypes.AssetPair, err error) {
+func (f *storkPriceFeed) PullAssetPairs(conn *websocket.Conn) (assetPairs []*oracletypes.AssetPair, err error) {
 	metrics.ReportFuncCall(f.svcTags)
 	doneFn := metrics.ReportFuncTiming(f.svcTags)
 	defer doneFn()
@@ -166,6 +166,7 @@ func (f *storkPriceFeed) PullPrice(_ context.Context) (
 	price decimal.Decimal,
 	err error,
 ) {
+	f.logger.Warning("Stork Price Feed is not implemented")
 	return zeroPrice, nil
 }
 

@@ -253,13 +253,13 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 					}).WithError(err).Errorln("can not convert to stork price feed")
 					continue
 				}
-				assetPairs, err = storkPricePuller.PullAssetPairs(ctx, s.storkWebsocket)
+				assetPairs, err = storkPricePuller.PullAssetPairs(s.storkWebsocket)
 				if err != nil {
 					metrics.ReportFuncError(s.svcTags)
 					feedLogger.WithError(err).Warningln("retrying PullAssetPairs after error")
 
 					for i := 0; i < maxRetriesPerInterval; i++ {
-						if assetPairs, err = storkPricePuller.PullAssetPairs(ctx, s.storkWebsocket); err != nil {
+						if assetPairs, err = storkPricePuller.PullAssetPairs(s.storkWebsocket); err != nil {
 							time.Sleep(time.Second)
 							continue
 						}
