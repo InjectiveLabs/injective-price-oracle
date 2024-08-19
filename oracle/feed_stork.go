@@ -132,15 +132,16 @@ func (f *storkPriceFeed) PullAssetPairs(conn *websocket.Conn) (assetPairs []*ora
 	}
 
 	var msgNeed []byte
+	var messageRead []byte
 	count := 0
 	for count < 2 {
-		_, message, err := conn.ReadMessage()
+		_, messageRead, err = conn.ReadMessage()
 		if err != nil {
 			log.Infoln("Error reading message:", err)
 			return
 
 		}
-		msgNeed = message
+		msgNeed = messageRead
 		count += 1
 	}
 
