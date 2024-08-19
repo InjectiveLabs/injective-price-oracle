@@ -2,16 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-	"net/url"
-	"net/http"
-	"encoding/base64"
 
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
@@ -108,8 +107,9 @@ func oracleCmd(cmd *cli.Cmd) {
 		&websocketUrl,
 		&websocketHeader,
 	)
-	
+
 	cmd.Action = func() {
+		ctx := context.Background()
 		// ensure a clean exit
 		defer closer.Close()
 
@@ -166,12 +166,13 @@ func oracleCmd(cmd *cli.Cmd) {
 		log.Infoln("waiting for GRPC services")
 		time.Sleep(1 * time.Second)
 
-		daemonWaitCtx, cancelWait := context.WithTimeout(context.Background(), 10*time.Second)
+		daemonWaitCtx, cancelWait := context.WithTimeout(ctx, 10*time.Second)
+		defer cancelWait()
+
 		daemonConn := cosmosClient.QueryClient()
 		if err := waitForService(daemonWaitCtx, daemonConn); err != nil {
 			panic(fmt.Errorf("failed to wait for cosmos client connection: %w", err))
 		}
-		cancelWait()
 		feedProviderConfigs := map[oracle.FeedProvider]interface{}{
 			oracle.FeedProviderBinance: &oracle.BinanceEndpointConfig{
 				BaseURL: *binanceBaseURL,
@@ -189,7 +190,7 @@ func oracleCmd(cmd *cli.Cmd) {
 					return nil
 				}
 
-				cfgBody, err := ioutil.ReadFile(path)
+				cfgBody, err := os.ReadFile(path)
 				if err != nil {
 					err = errors.Wrapf(err, "failed to read dynamic feed config")
 					return err
@@ -228,7 +229,7 @@ func oracleCmd(cmd *cli.Cmd) {
 					return nil
 				}
 
-				cfgBody, err := ioutil.ReadFile(path)
+				cfgBody, err := os.ReadFile(path)
 				if err != nil {
 					err = errors.Wrapf(err, "failed to read stork feed config")
 					return err
@@ -256,7 +257,7 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Infof("found %d stork feed configs", len(storkFeedConfigs))
 		}
 
-		storkWebsocket, err := ConnectWebSocket(*websocketUrl, *websocketHeader)
+		storkWebsocket, err := ConnectWebSocket(ctx, *websocketUrl, *websocketHeader)
 		if err != nil {
 			err = errors.Wrapf(err, "can not connect with stork oracle websocket")
 			log.WithError(err).Fatalln("failed to load stork feeds")
@@ -294,7 +295,7 @@ func oracleCmd(cmd *cli.Cmd) {
 	}
 }
 
-func ConnectWebSocket(websocketUrl, urlHeader string) (conn *websocket.Conn, err error) {
+func ConnectWebSocket(ctx context.Context, websocketUrl, urlHeader string) (conn *websocket.Conn, err error) {
 	u, err := url.Parse(websocketUrl)
 	if err != nil {
 		log.Fatal("Error parsing URL:", err)
@@ -308,19 +309,19 @@ func ConnectWebSocket(websocketUrl, urlHeader string) (conn *websocket.Conn, err
 	dialer.EnableCompression = true
 	retries := 0
 	for {
-		conn, _, err = websocket.DefaultDialer.Dial(u.String(), header)
+		conn, _, err = websocket.DefaultDialer.DialContext(ctx, u.String(), header)
 		if err != nil {
 			log.Infof("Failed to connect to WebSocket server: %v", err)
 			retries++
 			if retries > oracle.MaxRetriesReConnectWebSocket {
 				log.Infof("Reached maximum retries (%d), exiting...", oracle.MaxRetriesReConnectWebSocket)
-				return &websocket.Conn{}, err
+				return
 			}
 			log.Infof("Retrying in 5s...")
 			time.Sleep(5 * time.Second)
 		} else {
 			log.Infof("Connected to WebSocket server")
-			return conn, nil
+			return
 		}
 	}
 }

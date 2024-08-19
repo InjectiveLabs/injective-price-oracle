@@ -12,7 +12,7 @@ import (
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
-	toml "github.com/pelletier/go-toml/v2"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	log "github.com/xlab/suplog"
@@ -119,8 +119,8 @@ func (f *storkPriceFeed) OracleType() oracletypes.OracleType {
 	return oracletypes.OracleType_Stork
 }
 
-// PullAssetPair pulls asset pair for an asset id
-func (f *storkPriceFeed) PullAssetPairs(ctx context.Context, conn *websocket.Conn) (assetPairs []*oracletypes.AssetPair, err error) {
+// PullAssetPairs pulls asset pair for an asset id
+func (f *storkPriceFeed) PullAssetPairs(conn *websocket.Conn) (assetPairs []*oracletypes.AssetPair, err error) {
 	metrics.ReportFuncCall(f.svcTags)
 	doneFn := metrics.ReportFuncTiming(f.svcTags)
 	defer doneFn()
@@ -128,7 +128,7 @@ func (f *storkPriceFeed) PullAssetPairs(ctx context.Context, conn *websocket.Con
 	err = conn.WriteMessage(websocket.TextMessage, []byte(f.message))
 	if err != nil {
 		log.Infoln("Error writing message:", err)
-		return []*oracletypes.AssetPair{}, nil
+		return
 	}
 
 	var msgNeed []byte
@@ -137,7 +137,7 @@ func (f *storkPriceFeed) PullAssetPairs(ctx context.Context, conn *websocket.Con
 		_, message, err := conn.ReadMessage()
 		if err != nil {
 			log.Infoln("Error reading message:", err)
-			return []*oracletypes.AssetPair{}, nil
+			return
 
 		}
 		msgNeed = message
@@ -146,7 +146,7 @@ func (f *storkPriceFeed) PullAssetPairs(ctx context.Context, conn *websocket.Con
 
 	var msgResp messageResponse
 	if err = json.Unmarshal(msgNeed, &msgResp); err != nil {
-		return []*oracletypes.AssetPair{}, nil
+		return
 	}
 
 	assetIds := make([]string, 0)
@@ -162,16 +162,17 @@ func (f *storkPriceFeed) PullAssetPairs(ctx context.Context, conn *websocket.Con
 	return assetPairs, nil
 }
 
-func (f *storkPriceFeed) PullPrice(ctx context.Context) (
+func (f *storkPriceFeed) PullPrice(_ context.Context) (
 	price decimal.Decimal,
 	err error,
 ) {
+	f.logger.Warning("Stork Price Feed is not implemented")
 	return zeroPrice, nil
 }
 
 // ConvertDataToAssetPair converts data get from websocket to list of asset pairs
 func ConvertDataToAssetPair(data Data, assetId string) (result oracletypes.AssetPair) {
-	signedPricesOfAssetPair := []*oracletypes.SignedPriceOfAssetPair{}
+	var signedPricesOfAssetPair []*oracletypes.SignedPriceOfAssetPair
 	for i := range data.SignedPrices {
 		newSignedPriceAssetPair := ConvertSignedPrice(data.SignedPrices[i])
 		signedPricesOfAssetPair = append(signedPricesOfAssetPair, &newSignedPriceAssetPair)
