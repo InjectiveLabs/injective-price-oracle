@@ -249,7 +249,7 @@ func oracleCmd(cmd *cli.Cmd) {
 			})
 
 			if err != nil {
-				err = errors.Wrapf(err, "stork feeds dir is specified, but failed to read from it: %s", *dynamicFeedsDir)
+				err = errors.Wrapf(err, "stork feeds dir is specified, but failed to read from it: %s", *storkFeedsDir)
 				log.WithError(err).Fatalln("failed to load stork feeds")
 				return
 			}
@@ -317,7 +317,7 @@ func ConnectWebSocket(ctx context.Context, websocketUrl, urlHeader string) (conn
 				log.Infof("Reached maximum retries (%d), exiting...", oracle.MaxRetriesReConnectWebSocket)
 				return
 			}
-			log.Infof("Retrying in 5s...")
+			log.Infof("Retrying connect %sth in 5s...", fmt.Sprint(retries))
 			time.Sleep(5 * time.Second)
 		} else {
 			log.Infof("Connected to WebSocket server")
