@@ -2,12 +2,12 @@ package oracle
 
 import (
 	"context"
+	"cosmossdk.io/math"
 	"fmt"
 	"runtime/debug"
 	"strings"
 	"time"
 
-	"cosmossdk.io/math"
 	cosmtypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -444,7 +444,9 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 
 				return
 			}
-			batchLog.WithField("hash", txResp.TxResponse.TxHash).Infoln("sent Tx in", time.Since(ts))
+			batchLog.WithField("height", txResp.TxResponse.Height).
+				WithField("hash", txResp.TxResponse.TxHash).
+				Infoln("sent Tx in", time.Since(ts))
 		}
 	}
 
