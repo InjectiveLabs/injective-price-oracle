@@ -260,7 +260,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		storkWebsocket, err := ConnectWebSocket(ctx, *websocketUrl, *websocketHeader)
 		if err != nil {
 			err = errors.Wrapf(err, "can not connect with stork oracle websocket")
-			log.WithError(err).Fatalln("failed to load stork feeds")
+			log.WithError(err).Errorln("failed to load stork feeds")
 			return
 		}
 		log.Info("Connected to stork websocket")
@@ -298,8 +298,7 @@ func oracleCmd(cmd *cli.Cmd) {
 func ConnectWebSocket(ctx context.Context, websocketUrl, urlHeader string) (conn *websocket.Conn, err error) {
 	u, err := url.Parse(websocketUrl)
 	if err != nil {
-		log.Fatal("Error parsing URL:", err)
-		return &websocket.Conn{}, err
+		return &websocket.Conn{}, errors.Wrapf(err, "can not parse WS url %s: %v", websocketUrl, err)
 	}
 
 	header := http.Header{}
@@ -310,7 +309,9 @@ func ConnectWebSocket(ctx context.Context, websocketUrl, urlHeader string) (conn
 	retries := 0
 	for {
 		conn, _, err = websocket.DefaultDialer.DialContext(ctx, u.String(), header)
-		if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		} else if err != nil {
 			log.Infof("Failed to connect to WebSocket server: %v", err)
 			retries++
 			if retries > oracle.MaxRetriesReConnectWebSocket {
@@ -318,7 +319,11 @@ func ConnectWebSocket(ctx context.Context, websocketUrl, urlHeader string) (conn
 				return
 			}
 			log.Infof("Retrying connect %sth in 5s...", fmt.Sprint(retries))
-			time.Sleep(5 * time.Second)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.NewTimer(5*time.Second).C:
+			}
 		} else {
 			log.Infof("Connected to WebSocket server")
 			return

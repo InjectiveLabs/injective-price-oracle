@@ -2,11 +2,12 @@ package oracle
 
 import (
 	"context"
-	"cosmossdk.io/math"
 	"fmt"
 	"runtime/debug"
 	"strings"
 	"time"
+
+	"cosmossdk.io/math"
 
 	cosmtypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
@@ -50,7 +51,6 @@ type MultiPricePuller interface {
 type oracleSvc struct {
 	pricePullers        map[string]PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
-	supportedStorkFeeds map[string]StorkFeedConfig
 	feedProviderConfigs map[FeedProvider]interface{}
 	cosmosClient        chainclient.ChainClient
 	exchangeQueryClient exchangetypes.QueryClient
@@ -167,11 +167,6 @@ func NewService(
 			DynamicConfig: feedCfg,
 		}
 	}
-	// add supportedStorkFeeds
-	svc.supportedStorkFeeds = map[string]StorkFeedConfig{}
-	for _, feedCfg := range storkFeedConfigs {
-		svc.supportedStorkFeeds[feedCfg.Ticker] = *feedCfg
-	}
 
 	svc.pricePullers = map[string]PricePuller{}
 	for _, feedCfg := range dynamicFeedConfigs {
@@ -183,7 +178,7 @@ func NewService(
 		}
 		svc.pricePullers[ticker] = pricePuller
 	}
-
+    // Warning: The logic for setting price pullers below will be overwrite ticket if it was already used previously (dynamicFeedConfigs)
 	for _, feedCfg := range storkFeedConfigs {
 		ticker := feedCfg.Ticker
 		pricePuller, err := NewStorkPriceFeed(feedCfg)
@@ -275,6 +270,10 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 						t.Reset(pricePuller.Interval())
 						continue
 					}
+				}
+				if len(assetPairs) == 0 {
+					t.Reset(pricePuller.Interval())
+					continue
 				}
 			} else {
 				price, err = pricePuller.PullPrice(ctx)
@@ -382,6 +381,9 @@ func (s *oracleSvc) composeStorkOracleMsgs(priceBatch []*PriceData) (result []co
 	}
 
 	for _, priceData := range priceBatch {
+		if priceData.OracleType != oracletypes.OracleType_Stork {
+			continue
+		}
 		msg := &oracletypes.MsgRelayStorkPrices{
 			Sender:     s.cosmosClient.FromAddress().String(),
 			AssetPairs: priceData.AssetPairs,
@@ -464,7 +466,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 					s.logger.WithFields(log.Fields{
 						"ticker":   priceData.Ticker,
 						"provider": priceData.ProviderName,
-					}).Errorln("got negative or zero price, skipping")
+					}).Debugln("got negative or zero price, skipping")
 					continue
 				}
 			} else {
@@ -472,7 +474,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 					s.logger.WithFields(log.Fields{
 						"ticker":   priceData.Ticker,
 						"provider": priceData.ProviderName,
-					}).Errorln("got zero asset pair for stork oracle, skipping")
+					}).Debugln("got zero asset pair for stork oracle, skipping")
 					continue
 				}
 			}

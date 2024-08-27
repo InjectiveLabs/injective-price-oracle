@@ -30,6 +30,7 @@ type StorkFeedConfig struct {
 
 type storkPriceFeed struct {
 	providerName string
+	ticker       string
 	interval     time.Duration
 	message      string
 
@@ -69,7 +70,7 @@ func NewStorkPriceFeed(cfg *StorkFeedConfig) (PricePuller, error) {
 
 	var oracleType oracletypes.OracleType
 	if cfg.OracleType == "" {
-		oracleType = oracletypes.OracleType_PriceFeed
+		oracleType = oracletypes.OracleType_Stork
 	} else {
 		tmpType, exist := oracletypes.OracleType_value[cfg.OracleType]
 		if !exist {
@@ -81,6 +82,7 @@ func NewStorkPriceFeed(cfg *StorkFeedConfig) (PricePuller, error) {
 
 	feed := &storkPriceFeed{
 		providerName: cfg.ProviderName,
+		ticker:       cfg.Ticker,
 		interval:     pullInterval,
 		message:      cfg.Message,
 		oracleType:   oracleType,
@@ -104,7 +106,7 @@ func (f *storkPriceFeed) Interval() time.Duration {
 }
 
 func (f *storkPriceFeed) Symbol() string {
-	return ""
+	return f.ticker
 }
 
 func (f *storkPriceFeed) Provider() FeedProvider {
@@ -127,7 +129,7 @@ func (f *storkPriceFeed) PullAssetPairs(conn *websocket.Conn) (assetPairs []*ora
 
 	err = conn.WriteMessage(websocket.TextMessage, []byte(f.message))
 	if err != nil {
-		log.Infoln("Error writing message:", err)
+		f.logger.Warningln("Error writing message:", err)
 		return
 	}
 
@@ -137,7 +139,7 @@ func (f *storkPriceFeed) PullAssetPairs(conn *websocket.Conn) (assetPairs []*ora
 	for count < 2 {
 		_, messageRead, err = conn.ReadMessage()
 		if err != nil {
-			log.Infoln("Error reading message:", err)
+			f.logger.Warningln("Error reading message:", err)
 			return
 
 		}
@@ -147,6 +149,7 @@ func (f *storkPriceFeed) PullAssetPairs(conn *websocket.Conn) (assetPairs []*ora
 
 	var msgResp messageResponse
 	if err = json.Unmarshal(msgNeed, &msgResp); err != nil {
+		f.logger.Warningln("error unmarshalling feed message:", err)
 		return
 	}
 
