@@ -18,14 +18,6 @@ import (
 
 var _ PricePuller = &storkPriceFeed{}
 
-type StorkFeedConfig struct {
-	ProviderName string `toml:"provider"`
-	Ticker       string `toml:"ticker"`
-	PullInterval string `toml:"pullInterval"`
-	Message      string `toml:"message"`
-	OracleType   string `toml:"oracleType"`
-}
-
 type storkPriceFeed struct {
 	storkFetcher *storkFetcher
 	providerName string
@@ -39,8 +31,8 @@ type storkPriceFeed struct {
 	oracleType oracletypes.OracleType
 }
 
-func ParseStorkFeedConfig(body []byte) (*StorkFeedConfig, error) {
-	var config StorkFeedConfig
+func ParseStorkFeedConfig(body []byte) (*FeedConfig, error) {
+	var config FeedConfig
 	if err := toml.Unmarshal(body, &config); err != nil {
 		err = errors.Wrap(err, "failed to unmarshal TOML config")
 		return nil, err
@@ -50,7 +42,7 @@ func ParseStorkFeedConfig(body []byte) (*StorkFeedConfig, error) {
 }
 
 // NewStorkPriceFeed returns price puller
-func NewStorkPriceFeed(storkFetcher *storkFetcher, cfg *StorkFeedConfig) (PricePuller, error) {
+func NewStorkPriceFeed(storkFetcher *storkFetcher, cfg *FeedConfig) (PricePuller, error) {
 	pullInterval := 1 * time.Minute
 	if len(cfg.PullInterval) > 0 {
 		interval, err := time.ParseDuration(cfg.PullInterval)

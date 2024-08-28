@@ -18,8 +18,9 @@ type StorkFetcher interface {
 }
 
 type StorkConfig struct {
-	StorkWebsocket *websocket.Conn
-	Message        string
+	WebsocketUrl    string
+	WebsocketHeader string
+	Message         string
 }
 
 type storkFetcher struct {
@@ -34,9 +35,9 @@ type storkFetcher struct {
 }
 
 // NewStorkFetcher returns a new StorkFetcher instance.
-func NewStorkFetcher(storkConfig *StorkConfig) (*storkFetcher, error) {
+func NewStorkFetcher(conn *websocket.Conn, storkConfig *StorkConfig) (*storkFetcher, error) {
 	feed := &storkFetcher{
-		conn:        storkConfig.StorkWebsocket,
+		conn:        conn,
 		message:     storkConfig.Message,
 		latestPairs: make(map[string]*oracletypes.AssetPair),
 		logger: log.WithFields(log.Fields{

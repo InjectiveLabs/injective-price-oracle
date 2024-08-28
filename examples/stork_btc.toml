@@ -1,4 +1,4 @@
-provider = "Stork"
-ticker = "ETHUSD"
+provider = "stork"
+ticker = "BTCUSD"
 pullInterval = "1m"
 oracleType = "Stork"

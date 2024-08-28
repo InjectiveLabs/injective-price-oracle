@@ -135,8 +135,7 @@ func initCosmosKeyOptions(
 func initExternalFeedsOptions(
 	cmd *cli.Cmd,
 	binanceBaseURL **string,
-	dynamicFeedsDir **string,
-	storkFeedsDir **string,
+	feedsDir **string,
 ) {
 	*binanceBaseURL = cmd.String(cli.StringOpt{
 		Name:   "binance-url",
@@ -144,15 +143,10 @@ func initExternalFeedsOptions(
 		EnvVar: "ORACLE_BINANCE_URL",
 	})
 
-	*dynamicFeedsDir = cmd.String(cli.StringOpt{
-		Name:   "dynamic-feeds",
-		Desc:   "Path to dynamic feeds configuration files in TOML format",
-		EnvVar: "ORACLE_DYNAMIC_FEEDS_DIR",
-	})
-	*storkFeedsDir = cmd.String(cli.StringOpt{
-		Name:   "stork-feeds",
-		Desc:   "Path to stork feeds configuration files in TOML format",
-		EnvVar: "ORACLE_STORK_FEEDS_DIR",
+	*feedsDir = cmd.String(cli.StringOpt{
+		Name:   "feeds-dir",
+		Desc:   "Path to feeds configuration files in TOML format",
+		EnvVar: "ORACLE_FEEDS_DIR",
 	})
 }
 

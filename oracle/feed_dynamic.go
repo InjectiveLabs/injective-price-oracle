@@ -19,16 +19,8 @@ import (
 	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 )
 
-type DynamicFeedConfig struct {
-	ProviderName      string `toml:"provider"`
-	Ticker            string `toml:"ticker"`
-	PullInterval      string `toml:"pullInterval"`
-	ObservationSource string `toml:"observationSource"`
-	OracleType        string `toml:"oracleType"`
-}
-
-func ParseDynamicFeedConfig(body []byte) (*DynamicFeedConfig, error) {
-	var config DynamicFeedConfig
+func ParseDynamicFeedConfig(body []byte) (*FeedConfig, error) {
+	var config FeedConfig
 	if err := toml.Unmarshal(body, &config); err != nil {
 		err = errors.Wrap(err, "failed to unmarshal TOML config")
 		return nil, err
@@ -44,7 +36,7 @@ func ParseDynamicFeedConfig(body []byte) (*DynamicFeedConfig, error) {
 	return &config, nil
 }
 
-func (c *DynamicFeedConfig) Hash() string {
+func (c *FeedConfig) Hash() string {
 	h := sha256.New()
 
 	_, _ = h.Write([]byte(c.ProviderName))
@@ -56,7 +48,7 @@ func (c *DynamicFeedConfig) Hash() string {
 
 // NewDynamicPriceFeed returns price puller that is implemented by Chainlink's job spec
 // runner that accepts dotDag graphs as a definition of the observation source.
-func NewDynamicPriceFeed(cfg *DynamicFeedConfig) (PricePuller, error) {
+func NewDynamicPriceFeed(cfg *FeedConfig) (PricePuller, error) {
 	pullInterval := 1 * time.Minute
 	if len(cfg.PullInterval) > 0 {
 		interval, err := time.ParseDuration(cfg.PullInterval)

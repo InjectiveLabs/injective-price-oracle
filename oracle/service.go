@@ -18,6 +18,8 @@ import (
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
+
+	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 )
 
 type Service interface {
@@ -48,6 +50,14 @@ type MultiPricePuller interface {
 	PullPrices(ctx context.Context) (prices map[string]decimal.Decimal, err error)
 }
 
+type FeedConfig struct {
+	ProviderName      string `toml:"provider"`
+	Ticker            string `toml:"ticker"`
+	PullInterval      string `toml:"pullInterval"`
+	ObservationSource string `toml:"observationSource"`
+	OracleType        string `toml:"oracleType"`
+}
+
 type oracleSvc struct {
 	pricePullers        map[string]PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
@@ -76,6 +86,10 @@ var (
 
 type FeedProvider string
 
+func (f FeedProvider) String() string {
+	return string(f)
+}
+
 const (
 	FeedProviderDynamic FeedProvider = "_"
 	FeedProviderBinance FeedProvider = "binance"
@@ -88,7 +102,7 @@ type PriceFeedConfig struct {
 	Symbol        string
 	FeedProvider  FeedProvider
 	PullInterval  time.Duration
-	DynamicConfig *DynamicFeedConfig
+	DynamicConfig *FeedConfig
 }
 
 // getEnabledFeeds returns a mapping between ticker and price feeder config, this will query
@@ -138,12 +152,12 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 }
 
 func NewService(
+	ctx context.Context,
 	cosmosClient chainclient.ChainClient,
 	exchangeQueryClient exchangetypes.QueryClient,
 	oracleQueryClient oracletypes.QueryClient,
 	feedProviderConfigs map[FeedProvider]interface{},
-	dynamicFeedConfigs []*DynamicFeedConfig,
-	storkFeedConfigs []*StorkFeedConfig,
+	feedConfigs []*FeedConfig,
 	config *StorkConfig,
 ) (Service, error) {
 	svc := &oracleSvc{
@@ -159,9 +173,12 @@ func NewService(
 		},
 	}
 
+	var storkFetcher *storkFetcher
+	var err error
+
 	// supportedPriceFeeds is a mapping between price ticker and its pricefeed config
 	svc.supportedPriceFeeds = map[string]PriceFeedConfig{}
-	for _, feedCfg := range dynamicFeedConfigs {
+	for _, feedCfg := range feedConfigs {
 		svc.supportedPriceFeeds[feedCfg.Ticker] = PriceFeedConfig{
 			FeedProvider:  FeedProviderDynamic,
 			DynamicConfig: feedCfg,
@@ -169,24 +186,22 @@ func NewService(
 	}
 
 	svc.pricePullers = map[string]PricePuller{}
-	for _, feedCfg := range dynamicFeedConfigs {
-		ticker := feedCfg.Ticker
-		pricePuller, err := NewDynamicPriceFeed(feedCfg)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to init dynamic price feed for ticker %s", ticker)
-			return nil, err
-		}
-		svc.pricePullers[ticker] = pricePuller
-	}
+	for _, feedCfg := range feedConfigs {
+		switch feedCfg.ProviderName {
+		case FeedProviderStork.String():
+			if storkFetcher == nil {
+				conn, err := pipeline.ConnectWebSocket(ctx, config.WebsocketUrl, config.WebsocketHeader, MaxRetriesReConnectWebSocket)
+				if err != nil {
+					err = errors.Wrap(err, "failed to connect to stork websocket")
+					return nil, err
+				}
 
-	if len(storkFeedConfigs) > 0 {
-		storkFetcher, err := NewStorkFetcher(config)
-		if err != nil {
-			err = errors.Wrap(err, "failed to init stork fetcher")
-			return nil, err
-		}
-
-		for _, feedCfg := range storkFeedConfigs {
+				storkFetcher, err = NewStorkFetcher(conn, config)
+				if err != nil {
+					err = errors.Wrap(err, "failed to init stork fetcher")
+					return nil, err
+				}
+			}
 			ticker := feedCfg.Ticker
 			pricePuller, err := NewStorkPriceFeed(storkFetcher, feedCfg)
 			if err != nil {
@@ -195,8 +210,18 @@ func NewService(
 			}
 			svc.pricePullers[ticker] = pricePuller
 			storkFetcher.AddTicker(ticker)
+		default: // TODO this should be replaced with correct providers
+			ticker := feedCfg.Ticker
+			pricePuller, err := NewDynamicPriceFeed(feedCfg)
+			if err != nil {
+				err = errors.Wrapf(err, "failed to init dynamic price feed for ticker %s", ticker)
+				return nil, err
+			}
+			svc.pricePullers[ticker] = pricePuller
 		}
+	}
 
+	if storkFetcher != nil {
 		err = storkFetcher.Start()
 		if err != nil {
 			err = errors.Wrap(err, "failed to start stork fetcher")
@@ -484,9 +509,5 @@ func (s *oracleSvc) panicRecover(err *error) {
 }
 
 func (s *oracleSvc) Close() {
-	err := s.config.StorkWebsocket.Close()
-	if err != nil {
-		s.logger.WithError(err).Errorln("unable to close stork websocket")
-		return
-	}
+	// graceful shutdown if needed
 }
