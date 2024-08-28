@@ -35,19 +35,8 @@ type PricePuller interface {
 
 	// PullPrice method must be implemented in order to get a price
 	// from external source, handled by PricePuller.
-	PullPrice(ctx context.Context) (price decimal.Decimal, err error)
+	PullPrice(ctx context.Context) (priceData *PriceData, err error)
 	OracleType() oracletypes.OracleType
-	AssetPair() *oracletypes.AssetPair
-}
-
-type MultiPricePuller interface {
-	PricePuller
-
-	AddSymbol(symbol string)
-	Symbols() []string
-
-	// PullPrices is a method that allows to pull multiple prices in a single batch.
-	PullPrices(ctx context.Context) (prices map[string]decimal.Decimal, err error)
 }
 
 type FeedConfig struct {
@@ -61,7 +50,6 @@ type FeedConfig struct {
 type oracleSvc struct {
 	pricePullers        map[string]PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
-	feedProviderConfigs map[FeedProvider]interface{}
 	cosmosClient        chainclient.ChainClient
 	exchangeQueryClient exchangetypes.QueryClient
 	oracleQueryClient   oracletypes.QueryClient
@@ -156,7 +144,6 @@ func NewService(
 	cosmosClient chainclient.ChainClient,
 	exchangeQueryClient exchangetypes.QueryClient,
 	oracleQueryClient oracletypes.QueryClient,
-	feedProviderConfigs map[FeedProvider]interface{},
 	feedConfigs []*FeedConfig,
 	config *StorkConfig,
 ) (Service, error) {
@@ -166,8 +153,7 @@ func NewService(
 		oracleQueryClient:   oracleQueryClient,
 		config:              config,
 
-		feedProviderConfigs: feedProviderConfigs,
-		logger:              log.WithField("svc", "oracle"),
+		logger: log.WithField("svc", "oracle"),
 		svcTags: metrics.Tags{
 			"svc": "price_oracle",
 		},
@@ -272,6 +258,7 @@ func (s *oracleSvc) processSetPriceFeed(ticker string, pricePuller PricePuller, 
 			defer cancelFn()
 
 			result, err := pricePuller.PullPrice(ctx)
+
 			if err != nil {
 				metrics.ReportFuncError(s.svcTags)
 				feedLogger.WithError(err).Warningln("retrying PullPrice after error")
@@ -296,14 +283,8 @@ func (s *oracleSvc) processSetPriceFeed(ticker string, pricePuller PricePuller, 
 				}
 			}
 
-			dataC <- &PriceData{
-				Ticker:       Ticker(ticker),
-				Symbol:       symbol,
-				Timestamp:    time.Now().UTC(),
-				ProviderName: pricePuller.ProviderName(),
-				AssetPair:    pricePuller.AssetPair(),
-				Price:        result,
-				OracleType:   pricePuller.OracleType(),
+			if result != nil {
+				dataC <- result
 			}
 
 			t.Reset(pricePuller.Interval())
