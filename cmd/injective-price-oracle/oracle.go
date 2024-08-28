@@ -214,7 +214,6 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Infof("found %d dynamic feed configs", len(feedConfigs))
 		}
 
-		log.Info("Connected to stork websocket")
 
 		svc, err := oracle.NewService(
 			ctx,
