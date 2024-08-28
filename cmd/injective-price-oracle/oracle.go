@@ -62,8 +62,9 @@ func oracleCmd(cmd *cli.Cmd) {
 		statsdDisabled *string
 
 		// Stork Oracle websocket params
-		websocketUrl    *string
-		websocketHeader *string
+		websocketUrl              *string
+		websocketHeader           *string
+		websocketSubscribeMessage *string
 	)
 
 	initCosmosOptions(
@@ -106,6 +107,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		cmd,
 		&websocketUrl,
 		&websocketHeader,
+		&websocketSubscribeMessage,
 	)
 
 	cmd.Action = func() {
@@ -217,7 +219,7 @@ func oracleCmd(cmd *cli.Cmd) {
 
 			log.Infof("found %d dynamic feed configs", len(dynamicFeedConfigs))
 		}
-
+		var storkWebsocket *websocket.Conn
 		storkFeedConfigs := make([]*oracle.StorkFeedConfig, 0, 10)
 		if len(*storkFeedsDir) > 0 {
 			err := filepath.WalkDir(*storkFeedsDir, func(path string, d fs.DirEntry, err error) error {
@@ -255,15 +257,15 @@ func oracleCmd(cmd *cli.Cmd) {
 			}
 
 			log.Infof("found %d stork feed configs", len(storkFeedConfigs))
-		}
 
-		storkWebsocket, err := ConnectWebSocket(ctx, *websocketUrl, *websocketHeader)
-		if err != nil {
-			err = errors.Wrapf(err, "can not connect with stork oracle websocket")
-			log.WithError(err).Errorln("failed to load stork feeds")
-			return
+			storkWebsocket, err = ConnectWebSocket(ctx, *websocketUrl, *websocketHeader)
+			if err != nil {
+				err = errors.Wrapf(err, "can not connect with stork oracle websocket")
+				log.WithError(err).Errorln("failed to load stork feeds")
+				return
+			}
+			log.Info("Connected to stork websocket")
 		}
-		log.Info("Connected to stork websocket")
 
 		svc, err := oracle.NewService(
 			cosmosClient,
@@ -272,7 +274,10 @@ func oracleCmd(cmd *cli.Cmd) {
 			feedProviderConfigs,
 			dynamicFeedConfigs,
 			storkFeedConfigs,
-			storkWebsocket,
+			&oracle.StorkConfig{
+				StorkWebsocket: storkWebsocket,
+				Message:        *websocketSubscribeMessage,
+			},
 		)
 		if err != nil {
 			log.Fatalln(err)
@@ -322,7 +327,7 @@ func ConnectWebSocket(ctx context.Context, websocketUrl, urlHeader string) (conn
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
-			case <-time.NewTimer(5*time.Second).C:
+			case <-time.NewTimer(5 * time.Second).C:
 			}
 		} else {
 			log.Infof("Connected to WebSocket server")

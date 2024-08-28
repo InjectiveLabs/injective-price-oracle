@@ -1,5 +1,0 @@
-provider = "Stork"
-ticker = "BTCUSD"
-pullInterval = "1m"
-oracleType = "Stork"
-message = "{\"type\":\"subscribe\",\"trace_id\":\"123\",\"data\":[\"BTCUSD\",\"ETHUSD\"]}"

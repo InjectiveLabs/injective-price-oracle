@@ -120,6 +120,10 @@ type dynamicPriceFeed struct {
 	oracleType oracletypes.OracleType
 }
 
+func (f *dynamicPriceFeed) AssetPair() *oracletypes.AssetPair {
+	return nil
+}
+
 func (f *dynamicPriceFeed) Interval() time.Duration {
 	return f.interval
 }

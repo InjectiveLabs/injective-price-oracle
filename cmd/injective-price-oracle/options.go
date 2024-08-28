@@ -203,17 +203,23 @@ func initStatsdOptions(
 
 func initStorkOracleWebSocket(
 	cmd *cli.Cmd,
-	websocketUrl    **string,
+	websocketUrl **string,
 	websocketHeader **string,
+	websocketSubscribeMessage **string,
 ) {
 	*websocketUrl = cmd.String(cli.StringOpt{
-		Name: "websocket-url",
-		Desc: "Stork websocket URL",
+		Name:   "websocket-url",
+		Desc:   "Stork websocket URL",
 		EnvVar: "STORK_WEBSOCKET_URL",
 	})
 	*websocketHeader = cmd.String(cli.StringOpt{
-		Name: "websocket header",
-		Desc: "Stork websocket header",
+		Name:   "websocket-header",
+		Desc:   "Stork websocket header",
 		EnvVar: "STORK_WEBSOCKET_HEADER",
+	})
+	*websocketSubscribeMessage = cmd.String(cli.StringOpt{
+		Name:   "websocket-subscribe-message",
+		Desc:   "Stork websocket subscribe message",
+		EnvVar: "STORK_WEBSOCKET_SUBSCRIBE_MESSAGE",
 	})
 }

@@ -2,7 +2,6 @@ package oracle
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/gorilla/websocket"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -29,10 +27,11 @@ type StorkFeedConfig struct {
 }
 
 type storkPriceFeed struct {
+	storkFetcher *storkFetcher
 	providerName string
 	ticker       string
+	tickers      []string
 	interval     time.Duration
-	message      string
 
 	logger  log.Logger
 	svcTags metrics.Tags
@@ -51,7 +50,7 @@ func ParseStorkFeedConfig(body []byte) (*StorkFeedConfig, error) {
 }
 
 // NewStorkPriceFeed returns price puller
-func NewStorkPriceFeed(cfg *StorkFeedConfig) (PricePuller, error) {
+func NewStorkPriceFeed(storkFetcher *storkFetcher, cfg *StorkFeedConfig) (PricePuller, error) {
 	pullInterval := 1 * time.Minute
 	if len(cfg.PullInterval) > 0 {
 		interval, err := time.ParseDuration(cfg.PullInterval)
@@ -60,8 +59,8 @@ func NewStorkPriceFeed(cfg *StorkFeedConfig) (PricePuller, error) {
 			return nil, err
 		}
 
-		if interval < 1*time.Second {
-			err = errors.Wrapf(err, "failed to parse pull interval: %s (minimum interval = 1s)", cfg.PullInterval)
+		if interval < 30*time.Second {
+			err = errors.Wrapf(err, "failed to parse pull interval: %s (minimum interval = 30s)", cfg.PullInterval)
 			return nil, err
 		}
 
@@ -81,10 +80,10 @@ func NewStorkPriceFeed(cfg *StorkFeedConfig) (PricePuller, error) {
 	}
 
 	feed := &storkPriceFeed{
+		storkFetcher: storkFetcher,
 		providerName: cfg.ProviderName,
 		ticker:       cfg.Ticker,
 		interval:     pullInterval,
-		message:      cfg.Message,
 		oracleType:   oracleType,
 
 		logger: log.WithFields(log.Fields{
@@ -121,56 +120,18 @@ func (f *storkPriceFeed) OracleType() oracletypes.OracleType {
 	return oracletypes.OracleType_Stork
 }
 
-// PullAssetPairs pulls asset pair for an asset id
-func (f *storkPriceFeed) PullAssetPairs(conn *websocket.Conn) (assetPairs []*oracletypes.AssetPair, err error) {
-	metrics.ReportFuncCall(f.svcTags)
-	doneFn := metrics.ReportFuncTiming(f.svcTags)
-	defer doneFn()
-
-	err = conn.WriteMessage(websocket.TextMessage, []byte(f.message))
-	if err != nil {
-		f.logger.Warningln("Error writing message:", err)
-		return
-	}
-
-	var msgNeed []byte
-	var messageRead []byte
-	count := 0
-	for count < 2 {
-		_, messageRead, err = conn.ReadMessage()
-		if err != nil {
-			f.logger.Warningln("Error reading message:", err)
-			return
-
-		}
-		msgNeed = messageRead
-		count += 1
-	}
-
-	var msgResp messageResponse
-	if err = json.Unmarshal(msgNeed, &msgResp); err != nil {
-		f.logger.Warningln("error unmarshalling feed message:", err)
-		return
-	}
-
-	assetIds := make([]string, 0)
-	for key := range msgResp.Data {
-		assetIds = append(assetIds, key)
-	}
-
-	for _, assetId := range assetIds {
-		pair := ConvertDataToAssetPair(msgResp.Data[assetId], assetId)
-		assetPairs = append(assetPairs, &pair)
-	}
-
-	return assetPairs, nil
+func (f *storkPriceFeed) AssetPair() *oracletypes.AssetPair {
+	return f.storkFetcher.AssetPair(f.ticker)
 }
 
 func (f *storkPriceFeed) PullPrice(_ context.Context) (
 	price decimal.Decimal,
 	err error,
 ) {
-	f.logger.Warning("Stork Price Feed is not implemented")
+	metrics.ReportFuncCall(f.svcTags)
+	doneFn := metrics.ReportFuncTiming(f.svcTags)
+	defer doneFn()
+
 	return zeroPrice, nil
 }
 

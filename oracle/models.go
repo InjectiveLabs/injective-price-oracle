@@ -24,7 +24,7 @@ type PriceData struct {
 	Price decimal.Decimal
 
 	// Asset pair - for Stork Oracle
-	AssetPairs []*oracletypes.AssetPair
+	AssetPair *oracletypes.AssetPair
 
 	// Timestamp of the report
 	Timestamp time.Time

@@ -90,6 +90,10 @@ func (f *binancePriceFeed) OracleType() oracletypes.OracleType {
 	return oracletypes.OracleType_PriceFeed
 }
 
+func (f *binancePriceFeed) AssetPair() *oracletypes.AssetPair {
+	return nil
+}
+
 func (f *binancePriceFeed) PullPrice(ctx context.Context) (
 	price decimal.Decimal,
 	err error,

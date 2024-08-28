@@ -18,7 +18,6 @@ import (
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
-	"github.com/gorilla/websocket"
 )
 
 type Service interface {
@@ -36,6 +35,7 @@ type PricePuller interface {
 	// from external source, handled by PricePuller.
 	PullPrice(ctx context.Context) (price decimal.Decimal, err error)
 	OracleType() oracletypes.OracleType
+	AssetPair() *oracletypes.AssetPair
 }
 
 type MultiPricePuller interface {
@@ -55,7 +55,7 @@ type oracleSvc struct {
 	cosmosClient        chainclient.ChainClient
 	exchangeQueryClient exchangetypes.QueryClient
 	oracleQueryClient   oracletypes.QueryClient
-	storkWebsocket      *websocket.Conn
+	config              *StorkConfig
 
 	logger  log.Logger
 	svcTags metrics.Tags
@@ -144,13 +144,13 @@ func NewService(
 	feedProviderConfigs map[FeedProvider]interface{},
 	dynamicFeedConfigs []*DynamicFeedConfig,
 	storkFeedConfigs []*StorkFeedConfig,
-	storkWebsocket *websocket.Conn,
+	config *StorkConfig,
 ) (Service, error) {
 	svc := &oracleSvc{
 		cosmosClient:        cosmosClient,
 		exchangeQueryClient: exchangeQueryClient,
 		oracleQueryClient:   oracleQueryClient,
-		storkWebsocket:      storkWebsocket,
+		config:              config,
 
 		feedProviderConfigs: feedProviderConfigs,
 		logger:              log.WithField("svc", "oracle"),
@@ -178,15 +178,30 @@ func NewService(
 		}
 		svc.pricePullers[ticker] = pricePuller
 	}
-    // Warning: The logic for setting price pullers below will be overwrite ticket if it was already used previously (dynamicFeedConfigs)
-	for _, feedCfg := range storkFeedConfigs {
-		ticker := feedCfg.Ticker
-		pricePuller, err := NewStorkPriceFeed(feedCfg)
+
+	if len(storkFeedConfigs) > 0 {
+		storkFetcher, err := NewStorkFetcher(config)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to init stork price feed for ticker %s", ticker)
+			err = errors.Wrap(err, "failed to init stork fetcher")
 			return nil, err
 		}
-		svc.pricePullers[ticker] = pricePuller
+
+		for _, feedCfg := range storkFeedConfigs {
+			ticker := feedCfg.Ticker
+			pricePuller, err := NewStorkPriceFeed(storkFetcher, feedCfg)
+			if err != nil {
+				err = errors.Wrapf(err, "failed to init stork price feed for ticker %s", ticker)
+				return nil, err
+			}
+			svc.pricePullers[ticker] = pricePuller
+			storkFetcher.AddTicker(ticker)
+		}
+
+		err = storkFetcher.Start()
+		if err != nil {
+			err = errors.Wrap(err, "failed to start stork fetcher")
+			return nil, err
+		}
 	}
 
 	svc.logger.Infof("initialized %d price pullers", len(svc.pricePullers))
@@ -203,11 +218,8 @@ func (s *oracleSvc) Start() (err error) {
 
 		for ticker, pricePuller := range s.pricePullers {
 			switch pricePuller.Provider() {
-			case FeedProviderBinance, FeedProviderStork,
-				FeedProviderDynamic:
-
-				go s.processSetPriceFeed(ticker, pricePuller.ProviderName(), pricePuller, dataC)
-
+			case FeedProviderBinance, FeedProviderStork, FeedProviderDynamic:
+				go s.processSetPriceFeed(ticker, pricePuller, dataC)
 			default:
 				s.logger.WithField("provider", pricePuller.Provider()).Warningln("unsupported price feed provider")
 			}
@@ -219,7 +231,7 @@ func (s *oracleSvc) Start() (err error) {
 	return
 }
 
-func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller PricePuller, dataC chan<- *PriceData) {
+func (s *oracleSvc) processSetPriceFeed(ticker string, pricePuller PricePuller, dataC chan<- *PriceData) {
 	feedLogger := s.logger.WithFields(log.Fields{
 		"ticker":   ticker,
 		"provider": pricePuller.ProviderName(),
@@ -233,72 +245,29 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 		case <-t.C:
 			ctx, cancelFn := context.WithTimeout(context.Background(), maxRespTime)
 			defer cancelFn()
-			// define price and asset pair to tracking late
-			var err error
-			price := zeroPrice
-			var assetPairs []*oracletypes.AssetPair
 
-			if pricePuller.OracleType() == oracletypes.OracleType_Stork {
-				storkPricePuller, ok := pricePuller.(*storkPriceFeed)
-				if !ok {
+			result, err := pricePuller.PullPrice(ctx)
+			if err != nil {
+				metrics.ReportFuncError(s.svcTags)
+				feedLogger.WithError(err).Warningln("retrying PullPrice after error")
+
+				for i := 0; i < maxRetriesPerInterval; i++ {
+					if result, err = pricePuller.PullPrice(ctx); err != nil {
+						time.Sleep(time.Second)
+						continue
+					}
+					break
+				}
+
+				if err != nil {
 					metrics.ReportFuncError(s.svcTags)
 					feedLogger.WithFields(log.Fields{
-						"oracle":  "Stork Oracle",
+						"symbol":  symbol,
 						"retries": maxRetriesPerInterval,
-					}).WithError(err).Errorln("can not convert to stork price feed")
-					continue
-				}
-				assetPairs, err = storkPricePuller.PullAssetPairs(s.storkWebsocket)
-				if err != nil {
-					metrics.ReportFuncError(s.svcTags)
-					feedLogger.WithError(err).Warningln("retrying PullAssetPairs after error")
+					}).WithError(err).Errorln("failed to fetch price")
 
-					for i := 0; i < maxRetriesPerInterval; i++ {
-						if assetPairs, err = storkPricePuller.PullAssetPairs(s.storkWebsocket); err != nil {
-							time.Sleep(time.Second)
-							continue
-						}
-						break
-					}
-
-					if err != nil {
-						metrics.ReportFuncError(s.svcTags)
-						feedLogger.WithFields(log.Fields{
-							"retries": maxRetriesPerInterval,
-						}).WithError(err).Errorln("failed to fetch asset pairs")
-
-						t.Reset(pricePuller.Interval())
-						continue
-					}
-				}
-				if len(assetPairs) == 0 {
 					t.Reset(pricePuller.Interval())
 					continue
-				}
-			} else {
-				price, err = pricePuller.PullPrice(ctx)
-				if err != nil {
-					metrics.ReportFuncError(s.svcTags)
-					feedLogger.WithError(err).Warningln("retrying PullPrice after error")
-
-					for i := 0; i < maxRetriesPerInterval; i++ {
-						if price, err = pricePuller.PullPrice(ctx); err != nil {
-							time.Sleep(time.Second)
-							continue
-						}
-						break
-					}
-
-					if err != nil {
-						metrics.ReportFuncError(s.svcTags)
-						feedLogger.WithFields(log.Fields{
-							"symbol":  symbol,
-							"retries": maxRetriesPerInterval,
-						}).WithError(err).Errorln("failed to fetch price")
-
-						t.Reset(pricePuller.Interval())
-						continue
-					}
 				}
 			}
 
@@ -307,8 +276,8 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 				Symbol:       symbol,
 				Timestamp:    time.Now().UTC(),
 				ProviderName: pricePuller.ProviderName(),
-				Price:        price,
-				AssetPairs:   assetPairs,
+				AssetPair:    pricePuller.AssetPair(),
+				Price:        result,
 				OracleType:   pricePuller.OracleType(),
 			}
 
@@ -380,14 +349,24 @@ func (s *oracleSvc) composeStorkOracleMsgs(priceBatch []*PriceData) (result []co
 		return nil
 	}
 
+	assetPairs := make([]*oracletypes.AssetPair, 0)
 	for _, priceData := range priceBatch {
 		if priceData.OracleType != oracletypes.OracleType_Stork {
 			continue
 		}
+
+		if priceData.AssetPair != nil {
+			assetPairs = append(assetPairs, priceData.AssetPair)
+		}
+	}
+
+	if len(assetPairs) > 0 {
 		msg := &oracletypes.MsgRelayStorkPrices{
 			Sender:     s.cosmosClient.FromAddress().String(),
-			AssetPairs: priceData.AssetPairs,
+			AssetPairs: assetPairs,
 		}
+
+		log.Debugf("assetPairs: %v", assetPairs)
 		result = append(result, msg)
 	}
 
@@ -461,20 +440,20 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 				submitBatch(prevBatch, false)
 				return
 			}
-			if priceData.OracleType != oracletypes.OracleType_Stork {
+			if priceData.OracleType == oracletypes.OracleType_Stork {
+				if priceData.AssetPair == nil {
+					s.logger.WithFields(log.Fields{
+						"ticker":   priceData.Ticker,
+						"provider": priceData.ProviderName,
+					}).Debugln("got nil asset pair for stork oracle, skipping")
+					continue
+				}
+			} else {
 				if priceData.Price.IsZero() || priceData.Price.IsNegative() {
 					s.logger.WithFields(log.Fields{
 						"ticker":   priceData.Ticker,
 						"provider": priceData.ProviderName,
 					}).Debugln("got negative or zero price, skipping")
-					continue
-				}
-			} else {
-				if len(priceData.AssetPairs) == 0 {
-					s.logger.WithFields(log.Fields{
-						"ticker":   priceData.Ticker,
-						"provider": priceData.ProviderName,
-					}).Debugln("got zero asset pair for stork oracle, skipping")
 					continue
 				}
 			}
@@ -505,5 +484,9 @@ func (s *oracleSvc) panicRecover(err *error) {
 }
 
 func (s *oracleSvc) Close() {
-	// TODO: graceful shutdown if needed
+	err := s.config.StorkWebsocket.Close()
+	if err != nil {
+		s.logger.WithError(err).Errorln("unable to close stork websocket")
+		return
+	}
 }
