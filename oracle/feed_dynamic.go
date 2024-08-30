@@ -112,10 +112,6 @@ type dynamicPriceFeed struct {
 	oracleType oracletypes.OracleType
 }
 
-func (f *dynamicPriceFeed) AssetPair() *oracletypes.AssetPair {
-	return nil
-}
-
 func (f *dynamicPriceFeed) Interval() time.Duration {
 	return f.interval
 }
@@ -142,7 +138,7 @@ func (f *dynamicPriceFeed) OracleType() oracletypes.OracleType {
 }
 
 func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
-	price decimal.Decimal,
+	priceData *PriceData,
 	err error,
 ) {
 	metrics.ReportFuncCall(f.svcTags)
@@ -170,7 +166,7 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 	run, trrs, err := runner.ExecuteRun(ctx, spec, runVars, runLogger)
 	if err != nil {
 		err = errors.Wrap(err, "failed to execute pipeline run")
-		return zeroPrice, err
+		return nil, err
 	} else if run.State != pipeline.RunStatusCompleted {
 		if run.HasErrors() {
 			runLogger.Warningf("final run result has non-critical errors: %s", run.AllErrors.ToError())
@@ -178,11 +174,11 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 
 		if run.HasFatalErrors() {
 			err = errors.Errorf("final run result has fatal errors: %s", run.FatalErrors.ToError())
-			return zeroPrice, err
+			return nil, err
 		}
 
 		err = errors.Errorf("expected run to be completed, yet got %v", run.State)
-		return zeroPrice, err
+		return nil, err
 	}
 
 	finalResult := trrs.FinalResult(runLogger)
@@ -192,12 +188,12 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 	}
 
 	if finalResult.HasFatalErrors() {
-		return zeroPrice, errors.Errorf("final run result has fatal errors: %v", finalResult.FatalErrors)
+		return nil, errors.Errorf("final run result has fatal errors: %v", finalResult.FatalErrors)
 	}
 
 	res, err := finalResult.SingularResult()
 	if err != nil {
-		return zeroPrice, errors.Wrap(err, "failed to get single result of pipeline run")
+		return nil, errors.Wrap(err, "failed to get single result of pipeline run")
 	}
 
 	price, ok := res.Value.(decimal.Decimal)
@@ -212,11 +208,18 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 
 		if err != nil {
 			err = fmt.Errorf("expected pipeline result as string, decimal.Decimal or float64, but got %T, err: %w", res.Value, err)
-			return zeroPrice, err
+			return nil, err
 		}
 	}
 
 	runLogger.Infoln("PullPrice (pipeline run) done in", time.Since(ts))
 
-	return price, nil
+	return &PriceData{
+		Ticker:       Ticker(f.ticker),
+		ProviderName: f.ProviderName(),
+		Symbol:       f.Symbol(),
+		Price:        price,
+		Timestamp:    time.Now(),
+		OracleType:   f.OracleType(),
+	}, nil
 }

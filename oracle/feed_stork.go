@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
-	"github.com/shopspring/decimal"
 	log "github.com/xlab/suplog"
 )
 
@@ -116,14 +115,22 @@ func (f *storkPriceFeed) AssetPair() *oracletypes.AssetPair {
 }
 
 func (f *storkPriceFeed) PullPrice(_ context.Context) (
-	price decimal.Decimal,
+	priceData *PriceData,
 	err error,
 ) {
-	metrics.ReportFuncCall(f.svcTags)
-	doneFn := metrics.ReportFuncTiming(f.svcTags)
-	defer doneFn()
+	pair := f.storkFetcher.AssetPair(f.ticker)
+	if pair == nil || len(pair.SignedPrices) == 0 {
+		return nil, nil
+	}
 
-	return zeroPrice, nil
+	return &PriceData{
+		Ticker:       Ticker(f.ticker),
+		ProviderName: f.ProviderName(),
+		Symbol:       f.Symbol(),
+		AssetPair:    pair,
+		Timestamp:    time.Now(),
+		OracleType:   f.OracleType(),
+	}, nil
 }
 
 // ConvertDataToAssetPair converts data get from websocket to list of asset pairs

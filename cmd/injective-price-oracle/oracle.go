@@ -171,11 +171,6 @@ func oracleCmd(cmd *cli.Cmd) {
 		if err := waitForService(daemonWaitCtx, daemonConn); err != nil {
 			panic(fmt.Errorf("failed to wait for cosmos client connection: %w", err))
 		}
-		feedProviderConfigs := map[oracle.FeedProvider]interface{}{
-			oracle.FeedProviderBinance: &oracle.BinanceEndpointConfig{
-				BaseURL: *binanceBaseURL,
-			},
-		}
 
 		feedConfigs := make([]*oracle.FeedConfig, 0, 10)
 		if len(*feedsDir) > 0 {
@@ -244,7 +239,6 @@ func oracleCmd(cmd *cli.Cmd) {
 			cosmosClient,
 			exchangetypes.NewQueryClient(daemonConn),
 			oracletypes.NewQueryClient(daemonConn),
-			feedProviderConfigs,
 			feedConfigs,
 			storkFetcher,
 		)
