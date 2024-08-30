@@ -18,8 +18,6 @@ import (
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
-
-	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 )
 
 type Service interface {
@@ -152,19 +150,18 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 }
 
 func NewService(
-	ctx context.Context,
+	_ context.Context,
 	cosmosClient chainclient.ChainClient,
 	exchangeQueryClient exchangetypes.QueryClient,
 	oracleQueryClient oracletypes.QueryClient,
 	feedProviderConfigs map[FeedProvider]interface{},
 	feedConfigs []*FeedConfig,
-	config *StorkConfig,
+	storkFetcher StorkFetcher,
 ) (Service, error) {
 	svc := &oracleSvc{
 		cosmosClient:        cosmosClient,
 		exchangeQueryClient: exchangeQueryClient,
 		oracleQueryClient:   oracleQueryClient,
-		config:              config,
 
 		feedProviderConfigs: feedProviderConfigs,
 		logger:              log.WithField("svc", "oracle"),
@@ -172,9 +169,6 @@ func NewService(
 			"svc": "price_oracle",
 		},
 	}
-
-	var storkFetcher *storkFetcher
-	var err error
 
 	// supportedPriceFeeds is a mapping between price ticker and its pricefeed config
 	svc.supportedPriceFeeds = map[string]PriceFeedConfig{}
@@ -189,19 +183,6 @@ func NewService(
 	for _, feedCfg := range feedConfigs {
 		switch feedCfg.ProviderName {
 		case FeedProviderStork.String():
-			if storkFetcher == nil {
-				conn, err := pipeline.ConnectWebSocket(ctx, config.WebsocketUrl, config.WebsocketHeader, MaxRetriesReConnectWebSocket)
-				if err != nil {
-					err = errors.Wrap(err, "failed to connect to stork websocket")
-					return nil, err
-				}
-
-				storkFetcher, err = NewStorkFetcher(conn, config)
-				if err != nil {
-					err = errors.Wrap(err, "failed to init stork fetcher")
-					return nil, err
-				}
-			}
 			ticker := feedCfg.Ticker
 			pricePuller, err := NewStorkPriceFeed(storkFetcher, feedCfg)
 			if err != nil {
@@ -209,7 +190,6 @@ func NewService(
 				return nil, err
 			}
 			svc.pricePullers[ticker] = pricePuller
-			storkFetcher.AddTicker(ticker)
 		default: // TODO this should be replaced with correct providers
 			ticker := feedCfg.Ticker
 			pricePuller, err := NewDynamicPriceFeed(feedCfg)
@@ -218,14 +198,6 @@ func NewService(
 				return nil, err
 			}
 			svc.pricePullers[ticker] = pricePuller
-		}
-	}
-
-	if storkFetcher != nil {
-		err = storkFetcher.Start()
-		if err != nil {
-			err = errors.Wrap(err, "failed to start stork fetcher")
-			return nil, err
 		}
 	}
 

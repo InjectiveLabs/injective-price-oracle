@@ -36,7 +36,7 @@ func ConnectWebSocket(ctx context.Context, websocketUrl, urlHeader string, maxRe
 			retries++
 			if retries > maxRetries {
 				log.Infof("Reached maximum retries (%d), exiting...", maxRetries)
-				return
+				return nil, errors.New("reached maximum retries")
 			}
 			log.Infof("Retrying connect %sth in 5s...", fmt.Sprint(retries))
 			select {

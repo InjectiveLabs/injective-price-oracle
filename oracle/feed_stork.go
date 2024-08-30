@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"cosmossdk.io/math"
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,7 +18,7 @@ import (
 var _ PricePuller = &storkPriceFeed{}
 
 type storkPriceFeed struct {
-	storkFetcher *storkFetcher
+	storkFetcher StorkFetcher
 	providerName string
 	ticker       string
 	tickers      []string
@@ -42,7 +41,7 @@ func ParseStorkFeedConfig(body []byte) (*FeedConfig, error) {
 }
 
 // NewStorkPriceFeed returns price puller
-func NewStorkPriceFeed(storkFetcher *storkFetcher, cfg *FeedConfig) (PricePuller, error) {
+func NewStorkPriceFeed(storkFetcher StorkFetcher, cfg *FeedConfig) (PricePuller, error) {
 	pullInterval := 1 * time.Minute
 	if len(cfg.PullInterval) > 0 {
 		interval, err := time.ParseDuration(cfg.PullInterval)
@@ -178,39 +177,4 @@ func CombineSignatureToString(signature Signature) (result string) {
 	prunedV := strings.TrimPrefix(signature.V, "0x")
 
 	return prunedR + prunedS + prunedV
-}
-
-type messageResponse struct {
-	Type    string          `json:"type"`
-	TraceID string          `json:"trace_id"`
-	Data    map[string]Data `json:"data"`
-}
-
-type Data struct {
-	Timestamp     int64         `json:"timestamp"`
-	AssetID       string        `json:"asset_id"`
-	SignatureType string        `json:"signature_type"`
-	Trigger       string        `json:"trigger"`
-	Price         string        `json:"price"`
-	SignedPrices  []SignedPrice `json:"signed_prices"`
-}
-
-type SignedPrice struct {
-	PublisherKey         string               `json:"publisher_key"`
-	ExternalAssetID      string               `json:"external_asset_id"`
-	SignatureType        string               `json:"signature_type"`
-	Price                math.LegacyDec       `json:"price"`
-	TimestampedSignature TimestampedSignature `json:"timestamped_signature"`
-}
-
-type TimestampedSignature struct {
-	Signature Signature `json:"signature"`
-	Timestamp uint64    `json:"timestamp"`
-	MsgHash   string    `json:"msg_hash"`
-}
-
-type Signature struct {
-	R string `json:"r"`
-	S string `json:"s"`
-	V string `json:"v"`
 }

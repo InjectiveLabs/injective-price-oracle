@@ -8,6 +8,7 @@ require (
 	cosmossdk.io/math v1.3.0
 	github.com/InjectiveLabs/metrics v0.0.10
 	github.com/InjectiveLabs/sdk-go v1.51.0
+	github.com/avast/retry-go/v4 v4.6.0
 	github.com/cometbft/cometbft v0.38.9
 	github.com/cosmos/cosmos-sdk v0.50.7
 	github.com/ethereum/go-ethereum v1.11.5

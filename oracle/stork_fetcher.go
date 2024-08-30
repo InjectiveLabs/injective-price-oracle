@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"cosmossdk.io/math"
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	"github.com/gorilla/websocket"
@@ -14,7 +15,25 @@ import (
 	log "github.com/xlab/suplog"
 )
 
+const (
+	messageTypeInvalid      messageType = "invalid_message"
+	messageTypeOraclePrices messageType = "oracle_prices"
+	messageTypeSubscribe    messageType = "subscribe"
+)
+
+var ErrInvalidMessage = errors.New("received invalid message")
+
 type StorkFetcher interface {
+	Start() error
+	Reconnect(conn *websocket.Conn) error
+	AssetPair(ticker string) *oracletypes.AssetPair
+	AddTicker(ticker string)
+}
+
+type messageType string
+
+func (m messageType) String() string {
+	return string(m)
 }
 
 type StorkConfig struct {
@@ -35,10 +54,10 @@ type storkFetcher struct {
 }
 
 // NewStorkFetcher returns a new StorkFetcher instance.
-func NewStorkFetcher(conn *websocket.Conn, storkConfig *StorkConfig) (*storkFetcher, error) {
+func NewStorkFetcher(conn *websocket.Conn, storkMessage string) *storkFetcher {
 	feed := &storkFetcher{
 		conn:        conn,
-		message:     storkConfig.Message,
+		message:     storkMessage,
 		latestPairs: make(map[string]*oracletypes.AssetPair),
 		logger: log.WithFields(log.Fields{
 			"svc":      "oracle",
@@ -51,7 +70,7 @@ func NewStorkFetcher(conn *websocket.Conn, storkConfig *StorkConfig) (*storkFetc
 		},
 	}
 
-	return feed, nil
+	return feed
 }
 
 func (f *storkFetcher) AssetPair(ticker string) *oracletypes.AssetPair {
@@ -67,8 +86,12 @@ func (f *storkFetcher) Start() error {
 		return err
 	}
 
-	go f.startReadingMessages()
-	return nil
+	return f.startReadingMessages()
+}
+
+func (f *storkFetcher) Reconnect(conn *websocket.Conn) error {
+	f.conn = conn
+	return f.Start()
 }
 
 func (f *storkFetcher) AddTicker(ticker string) {
@@ -82,6 +105,8 @@ func (f *storkFetcher) subscribe() error {
 		return errors.New("no tickers to subscribe to")
 	}
 
+	f.logger.Debugln("subscribing to tickers:", f.tickers)
+	f.logger.Debugln(fmt.Sprintf(f.message, strings.Join(f.tickers, "\",\"")))
 	err := f.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(f.message, strings.Join(f.tickers, "\",\""))))
 	if err != nil {
 		f.logger.Warningln("error writing subscription message:", err)
@@ -91,7 +116,12 @@ func (f *storkFetcher) subscribe() error {
 	return nil
 }
 
-func (f *storkFetcher) startReadingMessages() {
+func (f *storkFetcher) reset() {
+	f.conn.Close()
+	f.latestPairs = make(map[string]*oracletypes.AssetPair)
+}
+
+func (f *storkFetcher) startReadingMessages() error {
 	// Create a ticker that ticks every 10 seconds
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
@@ -106,8 +136,11 @@ func (f *storkFetcher) startReadingMessages() {
 			_, messageRead, err = f.conn.ReadMessage()
 			if err != nil {
 				f.logger.Warningln("error reading message:", err)
-				continue
+				f.reset()
+				return err
 			}
+
+			f.logger.Debugln("received message:", string(messageRead))
 
 			// Process the received message
 			var msgResp messageResponse
@@ -116,25 +149,79 @@ func (f *storkFetcher) startReadingMessages() {
 				continue
 			}
 
-			// Extract asset pairs from the message
-			assetIds := make([]string, 0)
-			for key := range msgResp.Data {
-				assetIds = append(assetIds, key)
-			}
+			switch msgResp.Type {
+			case messageTypeInvalid.String():
+				f.reset()
+				return ErrInvalidMessage
+			case messageTypeSubscribe.String():
+				f.logger.Infof("subscribed to tickers: %s", strings.Join(f.tickers, ","))
+			case messageTypeOraclePrices.String():
+				var data oracleData
+				if err = json.Unmarshal(msgResp.Data, &data); err != nil {
+					f.logger.Warningln("error unmarshalling oracle data:", err)
+					continue
+				}
 
-			// Update the cached asset pairs
-			newPairs := make(map[string]*oracletypes.AssetPair, len(assetIds))
-			for _, assetId := range assetIds {
-				pair := ConvertDataToAssetPair(msgResp.Data[assetId], assetId)
-				newPairs[assetId] = &pair
-			}
+				// Extract asset pairs from the message
+				assetIds := make([]string, 0)
+				for key := range data {
+					assetIds = append(assetIds, key)
+				}
 
-			// Safely update the latestPairs with a write lock
-			f.mu.Lock()
-			for key, value := range newPairs {
-				f.latestPairs[key] = value
+				// Update the cached asset pairs
+				newPairs := make(map[string]*oracletypes.AssetPair, len(assetIds))
+				for _, assetId := range assetIds {
+					pair := ConvertDataToAssetPair(data[assetId], assetId)
+					newPairs[assetId] = &pair
+				}
+
+				// Safely update the latestPairs with a write lock
+				f.mu.Lock()
+				for key, value := range newPairs {
+					f.latestPairs[key] = value
+				}
+				f.mu.Unlock()
+
+			default:
+				f.logger.Warningln("received unknown message type:", msgResp.Type)
 			}
-			f.mu.Unlock()
 		}
 	}
+}
+
+type messageResponse struct {
+	Type    string          `json:"type"`
+	TraceID string          `json:"trace_id"`
+	Data    json.RawMessage `json:"data"`
+}
+
+type oracleData map[string]Data
+
+type Data struct {
+	Timestamp     int64         `json:"timestamp"`
+	AssetID       string        `json:"asset_id"`
+	SignatureType string        `json:"signature_type"`
+	Trigger       string        `json:"trigger"`
+	Price         string        `json:"price"`
+	SignedPrices  []SignedPrice `json:"signed_prices"`
+}
+
+type SignedPrice struct {
+	PublisherKey         string               `json:"publisher_key"`
+	ExternalAssetID      string               `json:"external_asset_id"`
+	SignatureType        string               `json:"signature_type"`
+	Price                math.LegacyDec       `json:"price"`
+	TimestampedSignature TimestampedSignature `json:"timestamped_signature"`
+}
+
+type TimestampedSignature struct {
+	Signature Signature `json:"signature"`
+	Timestamp uint64    `json:"timestamp"`
+	MsgHash   string    `json:"msg_hash"`
+}
+
+type Signature struct {
+	R string `json:"r"`
+	S string `json:"s"`
+	V string `json:"v"`
 }
