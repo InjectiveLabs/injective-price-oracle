@@ -1,6 +1,7 @@
 package oracle
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -24,10 +25,8 @@ const (
 var ErrInvalidMessage = errors.New("received invalid message")
 
 type StorkFetcher interface {
-	Start() error
-	Reconnect(conn *websocket.Conn) error
+	Start(ctx context.Context, conn *websocket.Conn) error
 	AssetPair(ticker string) *oracletypes.AssetPair
-	AddTicker(ticker string)
 }
 
 type messageType string
@@ -54,10 +53,10 @@ type storkFetcher struct {
 }
 
 // NewStorkFetcher returns a new StorkFetcher instance.
-func NewStorkFetcher(conn *websocket.Conn, storkMessage string) *storkFetcher {
+func NewStorkFetcher(storkMessage string, storkTickers []string) *storkFetcher {
 	feed := &storkFetcher{
-		conn:        conn,
 		message:     storkMessage,
+		tickers:     storkTickers,
 		latestPairs: make(map[string]*oracletypes.AssetPair),
 		logger: log.WithFields(log.Fields{
 			"svc":      "oracle",
@@ -80,22 +79,15 @@ func (f *storkFetcher) AssetPair(ticker string) *oracletypes.AssetPair {
 	return f.latestPairs[ticker]
 }
 
-func (f *storkFetcher) Start() error {
+func (f *storkFetcher) Start(_ context.Context, conn *websocket.Conn) error {
+	f.conn = conn
+
 	err := f.subscribe()
 	if err != nil {
 		return err
 	}
 
 	return f.startReadingMessages()
-}
-
-func (f *storkFetcher) Reconnect(conn *websocket.Conn) error {
-	f.conn = conn
-	return f.Start()
-}
-
-func (f *storkFetcher) AddTicker(ticker string) {
-	f.tickers = append(f.tickers, ticker)
 }
 
 // subscribe sends the initial subscription message to the WebSocket server.
@@ -117,74 +109,71 @@ func (f *storkFetcher) subscribe() error {
 }
 
 func (f *storkFetcher) reset() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
 	f.conn.Close()
 	f.latestPairs = make(map[string]*oracletypes.AssetPair)
 }
 
 func (f *storkFetcher) startReadingMessages() error {
-	// Create a ticker that ticks every 10 seconds
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
 	for {
-		select {
-		case <-ticker.C:
-			var err error
-			var messageRead []byte
+		var err error
+		var messageRead []byte
+		now := time.Now()
+		// Read message from the WebSocket
+		_, messageRead, err = f.conn.ReadMessage()
+		if err != nil {
+			f.logger.Warningln("error reading message:", err)
+			f.reset()
+			return err
+		}
+		f.logger.Debugln("time taken to read message:", time.Since(now))
 
-			// Read message from the WebSocket
-			_, messageRead, err = f.conn.ReadMessage()
-			if err != nil {
-				f.logger.Warningln("error reading message:", err)
-				f.reset()
-				return err
-			}
+		f.logger.Debugln("received message:", string(messageRead))
 
-			f.logger.Debugln("received message:", string(messageRead))
+		// Process the received message
+		var msgResp messageResponse
+		if err = json.Unmarshal(messageRead, &msgResp); err != nil {
+			f.logger.Warningln("error unmarshalling feed message:", err)
+			continue
+		}
 
-			// Process the received message
-			var msgResp messageResponse
-			if err = json.Unmarshal(messageRead, &msgResp); err != nil {
-				f.logger.Warningln("error unmarshalling feed message:", err)
+		switch msgResp.Type {
+		case messageTypeInvalid.String():
+			f.reset()
+			return ErrInvalidMessage
+		case messageTypeSubscribe.String():
+			f.logger.Infof("subscribed to tickers: %s", strings.Join(f.tickers, ","))
+		case messageTypeOraclePrices.String():
+			var data oracleData
+			if err = json.Unmarshal(msgResp.Data, &data); err != nil {
+				f.logger.Warningln("error unmarshalling oracle data:", err)
 				continue
 			}
 
-			switch msgResp.Type {
-			case messageTypeInvalid.String():
-				f.reset()
-				return ErrInvalidMessage
-			case messageTypeSubscribe.String():
-				f.logger.Infof("subscribed to tickers: %s", strings.Join(f.tickers, ","))
-			case messageTypeOraclePrices.String():
-				var data oracleData
-				if err = json.Unmarshal(msgResp.Data, &data); err != nil {
-					f.logger.Warningln("error unmarshalling oracle data:", err)
-					continue
-				}
-
-				// Extract asset pairs from the message
-				assetIds := make([]string, 0)
-				for key := range data {
-					assetIds = append(assetIds, key)
-				}
-
-				// Update the cached asset pairs
-				newPairs := make(map[string]*oracletypes.AssetPair, len(assetIds))
-				for _, assetId := range assetIds {
-					pair := ConvertDataToAssetPair(data[assetId], assetId)
-					newPairs[assetId] = &pair
-				}
-
-				// Safely update the latestPairs with a write lock
-				f.mu.Lock()
-				for key, value := range newPairs {
-					f.latestPairs[key] = value
-				}
-				f.mu.Unlock()
-
-			default:
-				f.logger.Warningln("received unknown message type:", msgResp.Type)
+			// Extract asset pairs from the message
+			assetIds := make([]string, 0)
+			for key := range data {
+				assetIds = append(assetIds, key)
 			}
+
+			// Update the cached asset pairs
+			newPairs := make(map[string]*oracletypes.AssetPair, len(assetIds))
+			for _, assetId := range assetIds {
+				pair := ConvertDataToAssetPair(data[assetId], assetId)
+				newPairs[assetId] = &pair
+			}
+
+			// Safely update the latestPairs with a write lock
+			f.mu.Lock()
+			for key, value := range newPairs {
+				f.latestPairs[key] = value
+			}
+			f.mu.Unlock()
+
+		default:
+			f.logger.Warningln("received unknown message type:", msgResp.Type)
 		}
 	}
 }

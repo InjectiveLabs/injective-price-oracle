@@ -80,7 +80,6 @@ services:
       ORACLE_COSMOS_GRPC: tcp://sentry0.injective.network:9900
       ORACLE_TENDERMINT_RPC: http://sentry0.injective.network:26657
       ORACLE_COSMOS_GAS_PRICES: 500000000inj
-      ORACLE_DYNAMIC_FEEDS_DIR:
       # keyring config
       ORACLE_COSMOS_KEYRING: file
       ORACLE_COSMOS_KEYRING_DIR: /root/keyring-oracle

@@ -11,7 +11,6 @@ import (
 
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
-	"github.com/avast/retry-go/v4"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	cli "github.com/jawher/mow.cli"
 	"github.com/pkg/errors"
@@ -172,6 +171,9 @@ func oracleCmd(cmd *cli.Cmd) {
 			panic(fmt.Errorf("failed to wait for cosmos client connection: %w", err))
 		}
 
+		var storkEnabled bool
+		var storkTickers []string
+
 		feedConfigs := make([]*oracle.FeedConfig, 0, 10)
 		if len(*feedsDir) > 0 {
 			err := filepath.WalkDir(*feedsDir, func(path string, d fs.DirEntry, err error) error {
@@ -197,6 +199,11 @@ func oracleCmd(cmd *cli.Cmd) {
 					return nil
 				}
 
+				if feedCfg.ProviderName == oracle.FeedProviderStork.String() {
+					storkEnabled = true
+					storkTickers = append(storkTickers, feedCfg.Ticker)
+				}
+
 				feedConfigs = append(feedConfigs, feedCfg)
 
 				return nil
@@ -213,25 +220,8 @@ func oracleCmd(cmd *cli.Cmd) {
 
 		var storkFetcher oracle.StorkFetcher
 
-		if feedConfigs != nil {
-			for _, feedCfg := range feedConfigs {
-				if feedCfg.ProviderName == oracle.FeedProviderStork.String() {
-					conn, err := pipeline.ConnectWebSocket(ctx, *websocketUrl, *websocketHeader, oracle.MaxRetriesReConnectWebSocket)
-					if err != nil {
-						return
-					}
-
-					if storkFetcher == nil {
-						storkFetcher = oracle.NewStorkFetcher(conn, *websocketSubscribeMessage)
-					}
-
-					storkFetcher.AddTicker(feedCfg.Ticker)
-					if err != nil {
-						err = errors.Wrap(err, "failed to init stork fetcher")
-						return
-					}
-				}
-			}
+		if storkEnabled {
+			storkFetcher = oracle.NewStorkFetcher(*websocketSubscribeMessage, storkTickers)
 		}
 
 		svc, err := oracle.NewService(
@@ -251,58 +241,27 @@ func oracleCmd(cmd *cli.Cmd) {
 		})
 
 		go func() {
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
-
-			// Channel to signal when an error occurs and a retry is needed
-			retryChan := make(chan struct{}, 1)
-
-			// Function to connect to the WebSocket and handle errors
-			reconnect := func() error {
-				conn, err := pipeline.ConnectWebSocket(ctx, *websocketUrl, *websocketHeader, oracle.MaxRetriesReConnectWebSocket)
-				if err != nil {
-					return err
-				}
-
-				if err := storkFetcher.Reconnect(conn); err != nil {
-					if errors.Is(err, oracle.ErrInvalidMessage) {
-						log.Errorln("invalid message received from WebSocket")
-					}
-
-					log.WithError(err).Errorln("failed to connect to WebSocket")
-					return err
-				}
-
-				return nil
+			if storkFetcher == nil {
+				return // no stork feeds
 			}
-
-			// Start initial connection attempt
-			if err := storkFetcher.Start(); err != nil {
-				// If there's an error, trigger a retry
-				retryChan <- struct{}{}
-			}
-
+			connectIn := 0 * time.Second
 			for {
 				select {
 				case <-ctx.Done():
-					log.Errorln("context canceled, exiting goroutine")
 					return
-				case <-retryChan:
-					// Attempt to connect using the retry mechanism
-					if err := retry.Do(
-						reconnect,
-						retry.Delay(30*time.Second),
-						retry.UntilSucceeded(),
-						retry.DelayType(retry.FixedDelay),
-						retry.OnRetry(func(n uint, err error) {
-							log.Infof("retrying connection to WebSocket (attempt %d)", n)
-						}),
-					); err != nil {
-						log.WithError(err).Errorln("failed to connect to WebSocket")
-						retryChan <- struct{}{}
-					} else {
-						log.Infoln("successfully connected to WebSocket")
-					}
+				case <-time.After(connectIn):
+				}
+
+				connectIn = 5 * time.Second
+				conn, err := pipeline.ConnectWebSocket(ctx, *websocketUrl, *websocketHeader, oracle.MaxRetriesReConnectWebSocket)
+				if err != nil {
+					log.WithError(err).Errorln("failed to connect to WebSocket")
+					continue
+				}
+
+				err = storkFetcher.Start(ctx, conn)
+				if err != nil {
+					log.WithError(err).Errorln("stork fetcher failed")
 				}
 			}
 		}()
