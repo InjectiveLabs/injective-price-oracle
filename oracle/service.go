@@ -413,7 +413,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			}
 			for oracleType, count := range currentMeta {
 				metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
-					s.Count(fmt.Sprintf("price_oracle.%s.submitted.price.size", oracleType), int64(count), tagSpec, 1)
+					s.Count(fmt.Sprintf("price_oracle.%s.submitted.price.size", strings.ToLower(oracleType)), int64(count), tagSpec, 1)
 				}, s.svcTags)
 			}
 			batchLog.WithField("height", txResp.TxResponse.Height).
