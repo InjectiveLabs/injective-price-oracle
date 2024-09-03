@@ -53,6 +53,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		// Metrics
 		statsdPrefix   *string
 		statsdAddr     *string
+		statsdAgent    *string
 		statsdStuckDur *string
 		statsdMocking  *string
 		statsdDisabled *string
@@ -93,6 +94,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		cmd,
 		&statsdPrefix,
 		&statsdAddr,
+		&statsdAgent,
 		&statsdStuckDur,
 		&statsdMocking,
 		&statsdDisabled,
@@ -113,6 +115,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		startMetricsGathering(
 			statsdPrefix,
 			statsdAddr,
+			statsdAgent,
 			statsdStuckDur,
 			statsdMocking,
 			statsdDisabled,
