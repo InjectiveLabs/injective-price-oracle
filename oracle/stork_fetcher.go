@@ -82,6 +82,8 @@ func (f *storkFetcher) AssetPair(ticker string) *oracletypes.AssetPair {
 func (f *storkFetcher) Start(_ context.Context, conn *websocket.Conn) error {
 	f.conn = conn
 
+	defer f.reset()
+
 	err := f.subscribe()
 	if err != nil {
 		return err
@@ -124,8 +126,11 @@ func (f *storkFetcher) startReadingMessages() error {
 		// Read message from the WebSocket
 		_, messageRead, err = f.conn.ReadMessage()
 		if err != nil {
+			// Report the error and return
+			metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
+				s.Count("feed_provider.stork.unable_read_message.size", 1, tagSpec, 1)
+			}, f.svcTags)
 			f.logger.Warningln("error reading message:", err)
-			f.reset()
 			return err
 		}
 		f.logger.Debugln("time taken to read message:", time.Since(now))
@@ -141,7 +146,10 @@ func (f *storkFetcher) startReadingMessages() error {
 
 		switch msgResp.Type {
 		case messageTypeInvalid.String():
-			f.reset()
+			// Report the invalid message and return
+			metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
+				s.Count("feed_provider.stork.invalid_message.size", 1, tagSpec, 1)
+			}, f.svcTags)
 			return ErrInvalidMessage
 		case messageTypeSubscribe.String():
 			f.logger.Infof("subscribed to tickers: %s", strings.Join(f.tickers, ","))
@@ -173,6 +181,9 @@ func (f *storkFetcher) startReadingMessages() error {
 			f.mu.Unlock()
 
 		default:
+			metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
+				s.Count("feed_provider.stork.unknown_message.size", 1, tagSpec, 1)
+			}, f.svcTags)
 			f.logger.Warningln("received unknown message type:", msgResp.Type)
 		}
 	}

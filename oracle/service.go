@@ -359,6 +359,10 @@ func (s *oracleSvc) composeMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg
 }
 
 func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
+	metrics.ReportFuncCall(s.svcTags)
+	doneFn := metrics.ReportFuncTiming(s.svcTags)
+	defer doneFn()
+
 	expirationTimer := time.NewTimer(commitPriceBatchTimeLimit)
 	pricesBatch := make([]*PriceData, 0, commitPriceBatchSizeLimit)
 
@@ -371,6 +375,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 	}
 
 	submitBatch := func(currentBatch []*PriceData, timeout bool) {
+
 		if len(currentBatch) == 0 {
 			return
 		}
