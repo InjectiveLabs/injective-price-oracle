@@ -365,17 +365,19 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 
 	expirationTimer := time.NewTimer(commitPriceBatchTimeLimit)
 	pricesBatch := make([]*PriceData, 0, commitPriceBatchSizeLimit)
+	pricesMeta := make(map[string]int)
 
-	resetBatch := func() []*PriceData {
+	resetBatch := func() ([]*PriceData, map[string]int) {
 		expirationTimer.Reset(commitPriceBatchTimeLimit)
 
 		prev := pricesBatch
+		prevMeta := pricesMeta
 		pricesBatch = make([]*PriceData, 0, commitPriceBatchSizeLimit)
-		return prev
+		pricesMeta = make(map[string]int)
+		return prev, prevMeta
 	}
 
-	submitBatch := func(currentBatch []*PriceData, timeout bool) {
-
+	submitBatch := func(currentBatch []*PriceData, currentMeta map[string]int, timeout bool) {
 		if len(currentBatch) == 0 {
 			return
 		}
@@ -401,12 +403,18 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 
 		if txResp.TxResponse != nil {
 			if txResp.TxResponse.Code != 0 {
+				metrics.ReportFuncError(s.svcTags)
 				batchLog.WithFields(log.Fields{
 					"hash":     txResp.TxResponse.TxHash,
 					"err_code": txResp.TxResponse.Code,
 				}).Errorf("set price Tx error: %s", txResp.String())
 
 				return
+			}
+			for oracleType, count := range currentMeta {
+				metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
+					s.Count(fmt.Sprintf("price_oracle.%s.submitted.price.size", oracleType), int64(count), tagSpec, 1)
+				}, s.svcTags)
 			}
 			batchLog.WithField("height", txResp.TxResponse.Height).
 				WithField("hash", txResp.TxResponse.TxHash).
@@ -419,8 +427,8 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 		case priceData, ok := <-dataC:
 			if !ok {
 				s.logger.Infoln("stopping committing prices")
-				prevBatch := resetBatch()
-				submitBatch(prevBatch, false)
+				prevBatch, prevMeta := resetBatch()
+				submitBatch(prevBatch, prevMeta, false)
 				return
 			}
 			if priceData.OracleType == oracletypes.OracleType_Stork {
@@ -440,15 +448,16 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 					continue
 				}
 			}
+			pricesMeta[priceData.OracleType.String()]++
 			pricesBatch = append(pricesBatch, priceData)
 
 			if len(pricesBatch) >= commitPriceBatchSizeLimit {
-				prevBatch := resetBatch()
-				submitBatch(prevBatch, false)
+				prevBatch, prevMeta := resetBatch()
+				submitBatch(prevBatch, prevMeta, false)
 			}
 		case <-expirationTimer.C:
-			prevBatch := resetBatch()
-			submitBatch(prevBatch, true)
+			prevBatch, prevMeta := resetBatch()
+			submitBatch(prevBatch, prevMeta, true)
 		}
 	}
 }
