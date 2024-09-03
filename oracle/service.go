@@ -2,22 +2,22 @@ package oracle
 
 import (
 	"context"
-	"cosmossdk.io/math"
 	"fmt"
 	"runtime/debug"
 	"strings"
 	"time"
+
+	"cosmossdk.io/math"
 
 	cosmtypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	log "github.com/xlab/suplog"
 
+	"github.com/InjectiveLabs/metrics"
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
-
-	"github.com/InjectiveLabs/metrics"
 )
 
 type Service interface {
@@ -33,38 +33,37 @@ type PricePuller interface {
 
 	// PullPrice method must be implemented in order to get a price
 	// from external source, handled by PricePuller.
-	PullPrice(ctx context.Context) (price decimal.Decimal, err error)
+	PullPrice(ctx context.Context) (priceData *PriceData, err error)
 	OracleType() oracletypes.OracleType
 }
 
-type MultiPricePuller interface {
-	PricePuller
-
-	AddSymbol(symbol string)
-	Symbols() []string
-
-	// PullPrices is a method that allows to pull multiple prices in a single batch.
-	PullPrices(ctx context.Context) (prices map[string]decimal.Decimal, err error)
+type FeedConfig struct {
+	ProviderName      string `toml:"provider"`
+	Ticker            string `toml:"ticker"`
+	PullInterval      string `toml:"pullInterval"`
+	ObservationSource string `toml:"observationSource"`
+	OracleType        string `toml:"oracleType"`
 }
 
 type oracleSvc struct {
 	pricePullers        map[string]PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
-	feedProviderConfigs map[FeedProvider]interface{}
 	cosmosClient        chainclient.ChainClient
 	exchangeQueryClient exchangetypes.QueryClient
 	oracleQueryClient   oracletypes.QueryClient
+	config              *StorkConfig
 
 	logger  log.Logger
 	svcTags metrics.Tags
 }
 
 const (
-	maxRespTime           = 15 * time.Second
-	maxRespHeadersTime    = 15 * time.Second
-	maxRespBytes          = 10 * 1024 * 1024
-	maxTxStatusRetries    = 3
-	maxRetriesPerInterval = 3
+	maxRespTime                  = 15 * time.Second
+	maxRespHeadersTime           = 15 * time.Second
+	maxRespBytes                 = 10 * 1024 * 1024
+	maxTxStatusRetries           = 3
+	maxRetriesPerInterval        = 3
+	MaxRetriesReConnectWebSocket = 5
 )
 
 var (
@@ -73,9 +72,14 @@ var (
 
 type FeedProvider string
 
+func (f FeedProvider) String() string {
+	return string(f)
+}
+
 const (
 	FeedProviderDynamic FeedProvider = "_"
 	FeedProviderBinance FeedProvider = "binance"
+	FeedProviderStork   FeedProvider = "stork"
 
 	// TODO: add your native implementations here
 )
@@ -84,7 +88,7 @@ type PriceFeedConfig struct {
 	Symbol        string
 	FeedProvider  FeedProvider
 	PullInterval  time.Duration
-	DynamicConfig *DynamicFeedConfig
+	DynamicConfig *FeedConfig
 }
 
 // getEnabledFeeds returns a mapping between ticker and price feeder config, this will query
@@ -99,7 +103,7 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 
 	feeds := make(map[string]PriceFeedConfig)
 
-	sender := s.cosmosClient.FromAddress().String()
+	sender := strings.ToLower(s.cosmosClient.FromAddress().String())
 	res, err := s.oracleQueryClient.PriceFeedPriceStates(ctx, &oracletypes.QueryPriceFeedPriceStatesRequest{})
 	if err != nil {
 		metrics.ReportFuncError(s.svcTags)
@@ -109,7 +113,7 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 	for _, priceFeedState := range res.PriceStates {
 		var found bool
 		for _, relayer := range priceFeedState.Relayers {
-			if strings.ToLower(relayer) == strings.ToLower(sender) {
+			if strings.ToLower(relayer) == sender {
 				found = true
 			}
 		}
@@ -123,7 +127,7 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 			feeds[ticker] = feed
 		} else {
 			s.logger.WithFields(log.Fields{
-				"sender": strings.ToLower(sender),
+				"sender": sender,
 			}).Warningf("current sender is authorized in %s feed, but no corresponding feed config loaded", ticker)
 		}
 	}
@@ -134,19 +138,19 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 }
 
 func NewService(
+	_ context.Context,
 	cosmosClient chainclient.ChainClient,
 	exchangeQueryClient exchangetypes.QueryClient,
 	oracleQueryClient oracletypes.QueryClient,
-	feedProviderConfigs map[FeedProvider]interface{},
-	dynamicFeedConfigs []*DynamicFeedConfig,
+	feedConfigs []*FeedConfig,
+	storkFetcher StorkFetcher,
 ) (Service, error) {
 	svc := &oracleSvc{
 		cosmosClient:        cosmosClient,
 		exchangeQueryClient: exchangeQueryClient,
 		oracleQueryClient:   oracleQueryClient,
 
-		feedProviderConfigs: feedProviderConfigs,
-		logger:              log.WithField("svc", "oracle"),
+		logger: log.WithField("svc", "oracle"),
 		svcTags: metrics.Tags{
 			"svc": "price_oracle",
 		},
@@ -154,7 +158,7 @@ func NewService(
 
 	// supportedPriceFeeds is a mapping between price ticker and its pricefeed config
 	svc.supportedPriceFeeds = map[string]PriceFeedConfig{}
-	for _, feedCfg := range dynamicFeedConfigs {
+	for _, feedCfg := range feedConfigs {
 		svc.supportedPriceFeeds[feedCfg.Ticker] = PriceFeedConfig{
 			FeedProvider:  FeedProviderDynamic,
 			DynamicConfig: feedCfg,
@@ -162,14 +166,25 @@ func NewService(
 	}
 
 	svc.pricePullers = map[string]PricePuller{}
-	for _, feedCfg := range dynamicFeedConfigs {
-		ticker := feedCfg.Ticker
-		pricePuller, err := NewDynamicPriceFeed(feedCfg)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to init dynamic price feed for ticker %s", ticker)
-			return nil, err
+	for _, feedCfg := range feedConfigs {
+		switch feedCfg.ProviderName {
+		case FeedProviderStork.String():
+			ticker := feedCfg.Ticker
+			pricePuller, err := NewStorkPriceFeed(storkFetcher, feedCfg)
+			if err != nil {
+				err = errors.Wrapf(err, "failed to init stork price feed for ticker %s", ticker)
+				return nil, err
+			}
+			svc.pricePullers[ticker] = pricePuller
+		default: // TODO this should be replaced with correct providers
+			ticker := feedCfg.Ticker
+			pricePuller, err := NewDynamicPriceFeed(feedCfg)
+			if err != nil {
+				err = errors.Wrapf(err, "failed to init dynamic price feed for ticker %s", ticker)
+				return nil, err
+			}
+			svc.pricePullers[ticker] = pricePuller
 		}
-		svc.pricePullers[ticker] = pricePuller
 	}
 
 	svc.logger.Infof("initialized %d price pullers", len(svc.pricePullers))
@@ -186,11 +201,8 @@ func (s *oracleSvc) Start() (err error) {
 
 		for ticker, pricePuller := range s.pricePullers {
 			switch pricePuller.Provider() {
-			case FeedProviderBinance,
-				FeedProviderDynamic:
-
-				go s.processSetPriceFeed(ticker, pricePuller.ProviderName(), pricePuller, dataC)
-
+			case FeedProviderBinance, FeedProviderStork, FeedProviderDynamic:
+				go s.processSetPriceFeed(ticker, pricePuller, dataC)
 			default:
 				s.logger.WithField("provider", pricePuller.Provider()).Warningln("unsupported price feed provider")
 			}
@@ -202,23 +214,23 @@ func (s *oracleSvc) Start() (err error) {
 	return
 }
 
-func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller PricePuller, dataC chan<- *PriceData) {
+func (s *oracleSvc) processSetPriceFeed(ticker string, pricePuller PricePuller, dataC chan<- *PriceData) {
 	feedLogger := s.logger.WithFields(log.Fields{
 		"ticker":   ticker,
 		"provider": pricePuller.ProviderName(),
 	})
 
-	ctx := context.Background()
 	symbol := pricePuller.Symbol()
 
 	t := time.NewTimer(5 * time.Second)
 	for {
 		select {
 		case <-t.C:
-			ctx, cancelFn := context.WithTimeout(ctx, maxRespTime)
+			ctx, cancelFn := context.WithTimeout(context.Background(), maxRespTime)
 			defer cancelFn()
 
 			result, err := pricePuller.PullPrice(ctx)
+
 			if err != nil {
 				metrics.ReportFuncError(s.svcTags)
 				feedLogger.WithError(err).Warningln("retrying PullPrice after error")
@@ -243,13 +255,8 @@ func (s *oracleSvc) processSetPriceFeed(ticker, providerName string, pricePuller
 				}
 			}
 
-			dataC <- &PriceData{
-				Ticker:       Ticker(ticker),
-				Symbol:       symbol,
-				Timestamp:    time.Now().UTC(),
-				ProviderName: pricePuller.ProviderName(),
-				Price:        result,
-				OracleType:   pricePuller.OracleType(),
+			if result != nil {
+				dataC <- result
 			}
 
 			t.Reset(pricePuller.Interval())
@@ -315,25 +322,62 @@ func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []c
 	return result
 }
 
+func (s *oracleSvc) composeStorkOracleMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
+	if len(priceBatch) == 0 {
+		return nil
+	}
+
+	assetPairs := make([]*oracletypes.AssetPair, 0)
+	for _, priceData := range priceBatch {
+		if priceData.OracleType != oracletypes.OracleType_Stork {
+			continue
+		}
+
+		if priceData.AssetPair != nil {
+			assetPairs = append(assetPairs, priceData.AssetPair)
+		}
+	}
+
+	if len(assetPairs) > 0 {
+		msg := &oracletypes.MsgRelayStorkPrices{
+			Sender:     s.cosmosClient.FromAddress().String(),
+			AssetPairs: assetPairs,
+		}
+
+		log.Debugf("assetPairs: %v", assetPairs)
+		result = append(result, msg)
+	}
+
+	return result
+}
+
 func (s *oracleSvc) composeMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
 	result = append(result, s.composePriceFeedMsgs(priceBatch)...)
 	result = append(result, s.composeProviderFeedMsgs(priceBatch)...)
+	result = append(result, s.composeStorkOracleMsgs(priceBatch)...)
 	return result
 }
 
 func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
+	metrics.ReportFuncCall(s.svcTags)
+	doneFn := metrics.ReportFuncTiming(s.svcTags)
+	defer doneFn()
+
 	expirationTimer := time.NewTimer(commitPriceBatchTimeLimit)
 	pricesBatch := make([]*PriceData, 0, commitPriceBatchSizeLimit)
+	pricesMeta := make(map[string]int)
 
-	resetBatch := func() []*PriceData {
+	resetBatch := func() ([]*PriceData, map[string]int) {
 		expirationTimer.Reset(commitPriceBatchTimeLimit)
 
 		prev := pricesBatch
+		prevMeta := pricesMeta
 		pricesBatch = make([]*PriceData, 0, commitPriceBatchSizeLimit)
-		return prev
+		pricesMeta = make(map[string]int)
+		return prev, prevMeta
 	}
 
-	submitBatch := func(currentBatch []*PriceData, timeout bool) {
+	submitBatch := func(currentBatch []*PriceData, currentMeta map[string]int, timeout bool) {
 		if len(currentBatch) == 0 {
 			return
 		}
@@ -359,12 +403,18 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 
 		if txResp.TxResponse != nil {
 			if txResp.TxResponse.Code != 0 {
+				metrics.ReportFuncError(s.svcTags)
 				batchLog.WithFields(log.Fields{
 					"hash":     txResp.TxResponse.TxHash,
 					"err_code": txResp.TxResponse.Code,
 				}).Errorf("set price Tx error: %s", txResp.String())
 
 				return
+			}
+			for oracleType, count := range currentMeta {
+				metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
+					s.Count(fmt.Sprintf("price_oracle.%s.submitted.price.size", oracleType), int64(count), tagSpec, 1)
+				}, s.svcTags)
 			}
 			batchLog.WithField("height", txResp.TxResponse.Height).
 				WithField("hash", txResp.TxResponse.TxHash).
@@ -377,28 +427,37 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 		case priceData, ok := <-dataC:
 			if !ok {
 				s.logger.Infoln("stopping committing prices")
-				prevBatch := resetBatch()
-				submitBatch(prevBatch, false)
+				prevBatch, prevMeta := resetBatch()
+				submitBatch(prevBatch, prevMeta, false)
 				return
 			}
-
-			if priceData.Price.IsZero() || priceData.Price.IsNegative() {
-				s.logger.WithFields(log.Fields{
-					"ticker":   priceData.Ticker,
-					"provider": priceData.ProviderName,
-				}).Errorln("got negative or zero price, skipping")
-				continue
+			if priceData.OracleType == oracletypes.OracleType_Stork {
+				if priceData.AssetPair == nil {
+					s.logger.WithFields(log.Fields{
+						"ticker":   priceData.Ticker,
+						"provider": priceData.ProviderName,
+					}).Debugln("got nil asset pair for stork oracle, skipping")
+					continue
+				}
+			} else {
+				if priceData.Price.IsZero() || priceData.Price.IsNegative() {
+					s.logger.WithFields(log.Fields{
+						"ticker":   priceData.Ticker,
+						"provider": priceData.ProviderName,
+					}).Debugln("got negative or zero price, skipping")
+					continue
+				}
 			}
-
+			pricesMeta[priceData.OracleType.String()]++
 			pricesBatch = append(pricesBatch, priceData)
 
 			if len(pricesBatch) >= commitPriceBatchSizeLimit {
-				prevBatch := resetBatch()
-				submitBatch(prevBatch, false)
+				prevBatch, prevMeta := resetBatch()
+				submitBatch(prevBatch, prevMeta, false)
 			}
 		case <-expirationTimer.C:
-			prevBatch := resetBatch()
-			submitBatch(prevBatch, true)
+			prevBatch, prevMeta := resetBatch()
+			submitBatch(prevBatch, prevMeta, true)
 		}
 	}
 }
@@ -417,5 +476,5 @@ func (s *oracleSvc) panicRecover(err *error) {
 }
 
 func (s *oracleSvc) Close() {
-	// TODO: graceful shutdown if needed
+	// graceful shutdown if needed
 }

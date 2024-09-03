@@ -8,26 +8,19 @@ import (
 	"sync/atomic"
 	"time"
 
-	toml "github.com/pelletier/go-toml/v2"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	log "github.com/xlab/suplog"
 
-	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+
+	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 )
 
-type DynamicFeedConfig struct {
-	ProviderName      string `toml:"provider"`
-	Ticker            string `toml:"ticker"`
-	PullInterval      string `toml:"pullInterval"`
-	ObservationSource string `toml:"observationSource"`
-	OracleType        string `toml:"oracleType"`
-}
-
-func ParseDynamicFeedConfig(body []byte) (*DynamicFeedConfig, error) {
-	var config DynamicFeedConfig
+func ParseDynamicFeedConfig(body []byte) (*FeedConfig, error) {
+	var config FeedConfig
 	if err := toml.Unmarshal(body, &config); err != nil {
 		err = errors.Wrap(err, "failed to unmarshal TOML config")
 		return nil, err
@@ -43,7 +36,7 @@ func ParseDynamicFeedConfig(body []byte) (*DynamicFeedConfig, error) {
 	return &config, nil
 }
 
-func (c *DynamicFeedConfig) Hash() string {
+func (c *FeedConfig) Hash() string {
 	h := sha256.New()
 
 	_, _ = h.Write([]byte(c.ProviderName))
@@ -55,7 +48,7 @@ func (c *DynamicFeedConfig) Hash() string {
 
 // NewDynamicPriceFeed returns price puller that is implemented by Chainlink's job spec
 // runner that accepts dotDag graphs as a definition of the observation source.
-func NewDynamicPriceFeed(cfg *DynamicFeedConfig) (PricePuller, error) {
+func NewDynamicPriceFeed(cfg *FeedConfig) (PricePuller, error) {
 	pullInterval := 1 * time.Minute
 	if len(cfg.PullInterval) > 0 {
 		interval, err := time.ParseDuration(cfg.PullInterval)
@@ -145,7 +138,7 @@ func (f *dynamicPriceFeed) OracleType() oracletypes.OracleType {
 }
 
 func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
-	price decimal.Decimal,
+	priceData *PriceData,
 	err error,
 ) {
 	metrics.ReportFuncCall(f.svcTags)
@@ -173,7 +166,7 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 	run, trrs, err := runner.ExecuteRun(ctx, spec, runVars, runLogger)
 	if err != nil {
 		err = errors.Wrap(err, "failed to execute pipeline run")
-		return zeroPrice, err
+		return nil, err
 	} else if run.State != pipeline.RunStatusCompleted {
 		if run.HasErrors() {
 			runLogger.Warningf("final run result has non-critical errors: %s", run.AllErrors.ToError())
@@ -181,11 +174,11 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 
 		if run.HasFatalErrors() {
 			err = errors.Errorf("final run result has fatal errors: %s", run.FatalErrors.ToError())
-			return zeroPrice, err
+			return nil, err
 		}
 
 		err = errors.Errorf("expected run to be completed, yet got %v", run.State)
-		return zeroPrice, err
+		return nil, err
 	}
 
 	finalResult := trrs.FinalResult(runLogger)
@@ -195,14 +188,12 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 	}
 
 	if finalResult.HasFatalErrors() {
-		err = errors.Errorf("final run result has fatal errors: %v", finalResult.FatalErrors)
-		return zeroPrice, err
+		return nil, errors.Errorf("final run result has fatal errors: %v", finalResult.FatalErrors)
 	}
 
 	res, err := finalResult.SingularResult()
 	if err != nil {
-		err = errors.Wrap(err, "failed to get single result of pipeline run")
-		return zeroPrice, err
+		return nil, errors.Wrap(err, "failed to get single result of pipeline run")
 	}
 
 	price, ok := res.Value.(decimal.Decimal)
@@ -217,11 +208,18 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 
 		if err != nil {
 			err = fmt.Errorf("expected pipeline result as string, decimal.Decimal or float64, but got %T, err: %w", res.Value, err)
-			return zeroPrice, err
+			return nil, err
 		}
 	}
 
 	runLogger.Infoln("PullPrice (pipeline run) done in", time.Since(ts))
 
-	return price, nil
+	return &PriceData{
+		Ticker:       Ticker(f.ticker),
+		ProviderName: f.ProviderName(),
+		Symbol:       f.Symbol(),
+		Price:        price,
+		Timestamp:    time.Now(),
+		OracleType:   f.OracleType(),
+	}, nil
 }

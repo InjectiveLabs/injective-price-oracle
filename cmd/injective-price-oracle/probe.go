@@ -53,6 +53,6 @@ func probeCmd(cmd *cli.Cmd) {
 			return
 		}
 
-		log.Infof("Answer: %s", answer.String())
+		log.Infof("Answer: %s", answer.Price)
 	}
 }

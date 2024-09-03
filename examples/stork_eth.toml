@@ -1,0 +1,4 @@
+provider = "stork"
+ticker = "ETHUSD"
+pullInterval = "1m"
+oracleType = "Stork"

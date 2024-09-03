@@ -80,7 +80,6 @@ services:
       ORACLE_COSMOS_GRPC: tcp://sentry0.injective.network:9900
       ORACLE_TENDERMINT_RPC: http://sentry0.injective.network:26657
       ORACLE_COSMOS_GAS_PRICES: 500000000inj
-      ORACLE_DYNAMIC_FEEDS_DIR:
       # keyring config
       ORACLE_COSMOS_KEYRING: file
       ORACLE_COSMOS_KEYRING_DIR: /root/keyring-oracle
@@ -160,7 +159,7 @@ More can be added if needed.
 
 List of config fields:
 
-* `provider` - name (or slug) of the used provider, used for logging purposes.
+* `provider` - name (or slug) of the used provider, used for logging purposes, ⚠️ needs to be unique across all feed providers.
 * `ticker` - name of the ticker on the Injective Chain. Used for loading feeds for enabled tickers.
 * `pullInterval` time duration spec in Go-flavoured duration syntax. Cannot be negative or less than "1s". Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
 * `observationSource` - pipeline spec in DOT Syntax

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +21,7 @@ import (
 	"github.com/InjectiveLabs/sdk-go/client/common"
 
 	"github.com/InjectiveLabs/injective-price-oracle/oracle"
+	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 )
 
 // oracleCmd action runs the service
@@ -47,8 +47,8 @@ func oracleCmd(cmd *cli.Cmd) {
 		cosmosUseLedger     *bool
 
 		// External Feeds params
-		dynamicFeedsDir *string
-		binanceBaseURL  *string
+		feedsDir       *string
+		binanceBaseURL *string
 
 		// Metrics
 		statsdPrefix   *string
@@ -56,6 +56,11 @@ func oracleCmd(cmd *cli.Cmd) {
 		statsdStuckDur *string
 		statsdMocking  *string
 		statsdDisabled *string
+
+		// Stork Oracle websocket params
+		websocketUrl              *string
+		websocketHeader           *string
+		websocketSubscribeMessage *string
 	)
 
 	initCosmosOptions(
@@ -81,7 +86,7 @@ func oracleCmd(cmd *cli.Cmd) {
 	initExternalFeedsOptions(
 		cmd,
 		&binanceBaseURL,
-		&dynamicFeedsDir,
+		&feedsDir,
 	)
 
 	initStatsdOptions(
@@ -93,7 +98,15 @@ func oracleCmd(cmd *cli.Cmd) {
 		&statsdDisabled,
 	)
 
+	initStorkOracleWebSocket(
+		cmd,
+		&websocketUrl,
+		&websocketHeader,
+		&websocketSubscribeMessage,
+	)
+
 	cmd.Action = func() {
+		ctx := context.Background()
 		// ensure a clean exit
 		defer closer.Close()
 
@@ -150,21 +163,20 @@ func oracleCmd(cmd *cli.Cmd) {
 		log.Infoln("waiting for GRPC services")
 		time.Sleep(1 * time.Second)
 
-		daemonWaitCtx, cancelWait := context.WithTimeout(context.Background(), 10*time.Second)
+		daemonWaitCtx, cancelWait := context.WithTimeout(ctx, 10*time.Second)
+		defer cancelWait()
+
 		daemonConn := cosmosClient.QueryClient()
 		if err := waitForService(daemonWaitCtx, daemonConn); err != nil {
 			panic(fmt.Errorf("failed to wait for cosmos client connection: %w", err))
 		}
-		cancelWait()
-		feedProviderConfigs := map[oracle.FeedProvider]interface{}{
-			oracle.FeedProviderBinance: &oracle.BinanceEndpointConfig{
-				BaseURL: *binanceBaseURL,
-			},
-		}
 
-		dynamicFeedConfigs := make([]*oracle.DynamicFeedConfig, 0, 10)
-		if len(*dynamicFeedsDir) > 0 {
-			err := filepath.WalkDir(*dynamicFeedsDir, func(path string, d fs.DirEntry, err error) error {
+		var storkEnabled bool
+		var storkTickers []string
+
+		feedConfigs := make([]*oracle.FeedConfig, 0, 10)
+		if len(*feedsDir) > 0 {
+			err := filepath.WalkDir(*feedsDir, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				} else if d.IsDir() {
@@ -173,7 +185,7 @@ func oracleCmd(cmd *cli.Cmd) {
 					return nil
 				}
 
-				cfgBody, err := ioutil.ReadFile(path)
+				cfgBody, err := os.ReadFile(path)
 				if err != nil {
 					err = errors.Wrapf(err, "failed to read dynamic feed config")
 					return err
@@ -187,26 +199,38 @@ func oracleCmd(cmd *cli.Cmd) {
 					return nil
 				}
 
-				dynamicFeedConfigs = append(dynamicFeedConfigs, feedCfg)
+				if feedCfg.ProviderName == oracle.FeedProviderStork.String() {
+					storkEnabled = true
+					storkTickers = append(storkTickers, feedCfg.Ticker)
+				}
+
+				feedConfigs = append(feedConfigs, feedCfg)
 
 				return nil
 			})
 
 			if err != nil {
-				err = errors.Wrapf(err, "dynamic feeds dir is specified, but failed to read from it: %s", *dynamicFeedsDir)
+				err = errors.Wrapf(err, "feeds dir is specified, but failed to read from it: %s", *feedsDir)
 				log.WithError(err).Fatalln("failed to load dynamic feeds")
 				return
 			}
 
-			log.Infof("found %d dynamic feed configs", len(dynamicFeedConfigs))
+			log.Infof("found %d dynamic feed configs", len(feedConfigs))
+		}
+
+		var storkFetcher oracle.StorkFetcher
+
+		if storkEnabled {
+			storkFetcher = oracle.NewStorkFetcher(*websocketSubscribeMessage, storkTickers)
 		}
 
 		svc, err := oracle.NewService(
+			ctx,
 			cosmosClient,
 			exchangetypes.NewQueryClient(daemonConn),
 			oracletypes.NewQueryClient(daemonConn),
-			feedProviderConfigs,
-			dynamicFeedConfigs,
+			feedConfigs,
+			storkFetcher,
 		)
 		if err != nil {
 			log.Fatalln(err)
@@ -215,6 +239,32 @@ func oracleCmd(cmd *cli.Cmd) {
 		closer.Bind(func() {
 			svc.Close()
 		})
+
+		go func() {
+			if storkFetcher == nil {
+				return // no stork feeds
+			}
+			connectIn := 0 * time.Second
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(connectIn):
+				}
+
+				connectIn = 5 * time.Second
+				conn, err := pipeline.ConnectWebSocket(ctx, *websocketUrl, *websocketHeader, oracle.MaxRetriesReConnectWebSocket)
+				if err != nil {
+					log.WithError(err).Errorln("failed to connect to WebSocket")
+					continue
+				}
+
+				err = storkFetcher.Start(ctx, conn)
+				if err != nil {
+					log.WithError(err).Errorln("stork fetcher failed")
+				}
+			}
+		}()
 
 		go func() {
 			if err := svc.Start(); err != nil {

@@ -135,7 +135,7 @@ func initCosmosKeyOptions(
 func initExternalFeedsOptions(
 	cmd *cli.Cmd,
 	binanceBaseURL **string,
-	dynamicFeedsDir **string,
+	feedsDir **string,
 ) {
 	*binanceBaseURL = cmd.String(cli.StringOpt{
 		Name:   "binance-url",
@@ -143,10 +143,10 @@ func initExternalFeedsOptions(
 		EnvVar: "ORACLE_BINANCE_URL",
 	})
 
-	*dynamicFeedsDir = cmd.String(cli.StringOpt{
-		Name:   "dynamic-feeds",
-		Desc:   "Path to dynamic feeds configuration files in TOML format",
-		EnvVar: "ORACLE_DYNAMIC_FEEDS_DIR",
+	*feedsDir = cmd.String(cli.StringOpt{
+		Name:   "feeds-dir",
+		Desc:   "Path to feeds configuration files in TOML format",
+		EnvVar: "ORACLE_FEEDS_DIR",
 	})
 }
 
@@ -192,5 +192,28 @@ func initStatsdOptions(
 		Desc:   "Force disabling statsd reporting completely.",
 		EnvVar: "ORACLE_STATSD_DISABLED",
 		Value:  "true",
+	})
+}
+
+func initStorkOracleWebSocket(
+	cmd *cli.Cmd,
+	websocketUrl **string,
+	websocketHeader **string,
+	websocketSubscribeMessage **string,
+) {
+	*websocketUrl = cmd.String(cli.StringOpt{
+		Name:   "websocket-url",
+		Desc:   "Stork websocket URL",
+		EnvVar: "STORK_WEBSOCKET_URL",
+	})
+	*websocketHeader = cmd.String(cli.StringOpt{
+		Name:   "websocket-header",
+		Desc:   "Stork websocket header",
+		EnvVar: "STORK_WEBSOCKET_HEADER",
+	})
+	*websocketSubscribeMessage = cmd.String(cli.StringOpt{
+		Name:   "websocket-subscribe-message",
+		Desc:   "Stork websocket subscribe message",
+		EnvVar: "STORK_WEBSOCKET_SUBSCRIBE_MESSAGE",
 	})
 }

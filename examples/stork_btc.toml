@@ -1,0 +1,4 @@
+provider = "stork"
+ticker = "BTCUSD"
+pullInterval = "1m"
+oracleType = "Stork"
