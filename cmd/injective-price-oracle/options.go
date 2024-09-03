@@ -155,6 +155,7 @@ func initStatsdOptions(
 	cmd *cli.Cmd,
 	statsdPrefix **string,
 	statsdAddr **string,
+	statsdAgent **string,
 	statsdStuckDur **string,
 	statsdMocking **string,
 	statsdDisabled **string,
@@ -171,6 +172,13 @@ func initStatsdOptions(
 		Desc:   "UDP address of a StatsD compatible metrics aggregator.",
 		EnvVar: "ORACLE_STATSD_ADDR",
 		Value:  "localhost:8125",
+	})
+
+	*statsdAgent = cmd.String(cli.StringOpt{
+		Name:   "statsd-agent",
+		Desc:   "Specify the agent name for StatsD metrics.",
+		EnvVar: "ORACLE_STATSD_AGENT",
+		Value:  "datadog",
 	})
 
 	*statsdStuckDur = cmd.String(cli.StringOpt{

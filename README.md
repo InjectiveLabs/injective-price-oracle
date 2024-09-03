@@ -67,7 +67,7 @@ services:
     container_name: injective-price-oracle
     image: public.ecr.aws/l9h3g6c6/injective-price-oracle:prod
     build: ../../../injective-price-oracle/
-    command: injective-price-oracle start --dynamic-feeds /root/oracle-feeds
+    command: injective-price-oracle start --feeds-dir /root/oracle-feeds
     logging:
       driver: journald
     environment:
@@ -93,6 +93,7 @@ services:
       # ORACLE_BINANCE_URL=
       # statsd config
       ORACLE_STATSD_PREFIX: "inj-oracle"
+      ORACLE_STATSD_AGENT: "datadog"
       ORACLE_STATSD_ADDR: host.docker.internal:8125
       ORACLE_STATSD_STUCK_DUR: 5m
       ORACLE_STATSD_MOCKING: "false"

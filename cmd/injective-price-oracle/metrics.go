@@ -18,6 +18,7 @@ import (
 func startMetricsGathering(
 	statsdPrefix *string,
 	statsdAddr *string,
+	statsdAgent *string,
 	statsdStuckDur *string,
 	statsdMocking *string,
 	statsdDisabled *string,
@@ -33,6 +34,7 @@ func startMetricsGathering(
 			hostname, _ := os.Hostname()
 			err := metrics.Init(*statsdAddr, checkStatsdPrefix(*statsdPrefix), &metrics.StatterConfig{
 				EnvName:              *envName,
+				Agent:                *statsdAgent,
 				HostName:             hostname,
 				StuckFunctionTimeout: duration(*statsdStuckDur, 30*time.Minute),
 				MockingEnabled:       toBool(*statsdMocking) || *envName == "local",
