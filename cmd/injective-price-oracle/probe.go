@@ -4,9 +4,9 @@ import (
 	"context"
 	"io/ioutil"
 
+	log "github.com/InjectiveLabs/suplog"
 	cli "github.com/jawher/mow.cli"
 	"github.com/xlab/closer"
-	log "github.com/xlab/suplog"
 
 	"github.com/InjectiveLabs/injective-price-oracle/oracle"
 )

@@ -6,14 +6,13 @@ import (
 
 	"go.uber.org/multierr"
 
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/pkg/errors"
-	log "github.com/xlab/suplog"
 )
 
-//
 // Return types:
-//     string
 //
+//	string
 type HTTPTask struct {
 	BaseTask    `mapstructure:",squash"`
 	Method      string

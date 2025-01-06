@@ -3,7 +3,7 @@ package pipeline
 import (
 	"context"
 
-	log "github.com/xlab/suplog"
+	log "github.com/InjectiveLabs/suplog"
 )
 
 type PanicTask struct {

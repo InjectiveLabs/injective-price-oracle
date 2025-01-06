@@ -8,10 +8,10 @@ import (
 
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
-	log "github.com/xlab/suplog"
 )
 
 var _ PricePuller = &storkPriceFeed{}

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	log "github.com/InjectiveLabs/suplog"
 	cli "github.com/jawher/mow.cli"
-	log "github.com/xlab/suplog"
 
 	"github.com/InjectiveLabs/injective-price-oracle/version"
 )

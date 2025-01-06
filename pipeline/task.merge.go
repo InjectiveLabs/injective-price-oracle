@@ -6,13 +6,12 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
-	log "github.com/xlab/suplog"
+	log "github.com/InjectiveLabs/suplog"
 )
 
-//
 // Return types:
-//     map[string]interface{}
 //
+//	map[string]interface{}
 type MergeTask struct {
 	BaseTask `mapstructure:",squash"`
 	Left     string `json:"left"`

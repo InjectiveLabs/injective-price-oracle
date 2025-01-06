@@ -11,9 +11,9 @@ import (
 	"cosmossdk.io/math"
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	log "github.com/xlab/suplog"
 )
 
 const (

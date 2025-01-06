@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	log "github.com/xlab/suplog"
+	log "github.com/InjectiveLabs/suplog"
 )
 
 // FailTask is like the Panic task but without all the drama and stack

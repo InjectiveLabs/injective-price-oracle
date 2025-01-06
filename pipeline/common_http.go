@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	log "github.com/xlab/suplog"
+	log "github.com/InjectiveLabs/suplog"
 )
 
 func makeHTTPRequest(

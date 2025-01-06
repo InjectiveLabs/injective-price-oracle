@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/pkg/errors"
-	log "github.com/xlab/suplog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 )

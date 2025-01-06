@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	log "github.com/xlab/suplog"
+	log "github.com/InjectiveLabs/suplog"
 )
 
 // AnyTask picks a value at random from the set of non-errored inputs.

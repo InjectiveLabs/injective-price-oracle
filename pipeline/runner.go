@@ -6,9 +6,9 @@ import (
 	"sort"
 	"time"
 
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
-	log "github.com/xlab/suplog"
 	null "gopkg.in/guregu/null.v4"
 )
 

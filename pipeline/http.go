@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/xlab/suplog"
+	log "github.com/InjectiveLabs/suplog"
 )
 
 // HTTPRequest holds the request and config struct for a http request

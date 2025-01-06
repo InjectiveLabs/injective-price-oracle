@@ -8,9 +8,9 @@ import (
 	"net/url"
 	"time"
 
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	log "github.com/xlab/suplog"
 )
 
 func ConnectWebSocket(ctx context.Context, websocketUrl, urlHeader string, maxRetries int) (conn *websocket.Conn, err error) {
