@@ -4,8 +4,8 @@ import (
 	"os"
 	"time"
 
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/xlab/closer"
-	log "github.com/xlab/suplog"
 
 	// DEBUG: do not enable in production
 	// _ "net/http/pprof"

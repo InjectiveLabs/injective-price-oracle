@@ -9,10 +9,10 @@ import (
 
 	"cosmossdk.io/math"
 
+	log "github.com/InjectiveLabs/suplog"
 	cosmtypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
-	log "github.com/xlab/suplog"
 
 	"github.com/InjectiveLabs/metrics"
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"

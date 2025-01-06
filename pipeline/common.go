@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
-	log "github.com/xlab/suplog"
 	null "gopkg.in/guregu/null.v4"
 
 	cnull "github.com/InjectiveLabs/injective-price-oracle/pipeline/null"

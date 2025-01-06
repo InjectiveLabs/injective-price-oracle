@@ -8,13 +8,12 @@ import (
 	"github.com/shopspring/decimal"
 	"go.uber.org/multierr"
 
-	log "github.com/xlab/suplog"
+	log "github.com/InjectiveLabs/suplog"
 )
 
-//
 // Return types:
-//    *decimal.Decimal
 //
+//	*decimal.Decimal
 type MedianTask struct {
 	BaseTask      `mapstructure:",squash"`
 	Values        string `json:"values"`

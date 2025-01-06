@@ -4,15 +4,14 @@ import (
 	"context"
 	"strings"
 
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/pkg/errors"
-	log "github.com/xlab/suplog"
 	"go.uber.org/multierr"
 )
 
-//
 // Return types:
-//     string
 //
+//	string
 type LowercaseTask struct {
 	BaseTask `mapstructure:",squash"`
 	Input    string `json:"input"`

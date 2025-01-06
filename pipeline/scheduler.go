@@ -5,9 +5,9 @@ import (
 	"sort"
 	"time"
 
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/jpillora/backoff"
 	"github.com/pkg/errors"
-	log "github.com/xlab/suplog"
 	null "gopkg.in/guregu/null.v4"
 )
 

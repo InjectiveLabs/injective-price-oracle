@@ -8,13 +8,12 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
-	log "github.com/xlab/suplog"
+	log "github.com/InjectiveLabs/suplog"
 )
 
-//
 // Return types:
-//     []byte
 //
+//	[]byte
 type ETHABIEncodeTask struct {
 	BaseTask `mapstructure:",squash"`
 	ABI      string `json:"abi"`

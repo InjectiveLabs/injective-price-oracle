@@ -6,13 +6,12 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
-	log "github.com/xlab/suplog"
+	log "github.com/InjectiveLabs/suplog"
 )
 
-//
 // Return types:
-//     map[string]interface{} with any geth/abigen value type
 //
+//	map[string]interface{} with any geth/abigen value type
 type ETHABIDecodeTask struct {
 	BaseTask `mapstructure:",squash"`
 	ABI      string `json:"abi"`

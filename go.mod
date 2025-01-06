@@ -8,6 +8,7 @@ require (
 	cosmossdk.io/math v1.3.0
 	github.com/InjectiveLabs/metrics v0.0.10
 	github.com/InjectiveLabs/sdk-go v1.51.0
+	github.com/InjectiveLabs/suplog v1.3.4
 	github.com/cometbft/cometbft v0.38.9
 	github.com/cosmos/cosmos-sdk v0.50.7
 	github.com/ethereum/go-ethereum v1.11.5
@@ -20,7 +21,6 @@ require (
 	github.com/satori/go.uuid v1.2.0
 	github.com/shopspring/decimal v1.2.0
 	github.com/xlab/closer v0.0.0-20190328110542-03326addb7c2
-	github.com/xlab/suplog v1.3.1
 	go.uber.org/multierr v1.11.0
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.63.2
@@ -53,7 +53,6 @@ require (
 	github.com/DataDog/go-tuf v1.0.2-0.5.2 // indirect
 	github.com/DataDog/sketches-go v1.4.2 // indirect
 	github.com/DataDog/zstd v1.5.5 // indirect
-	github.com/InjectiveLabs/suplog v1.3.3 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/alexcesaro/statsd v2.0.0+incompatible // indirect
 	github.com/aws/aws-sdk-go v1.44.327 // indirect

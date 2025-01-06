@@ -9,18 +9,17 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
-	log "github.com/xlab/suplog"
+	log "github.com/InjectiveLabs/suplog"
 )
 
-//
 // Return types:
-//     float64
-//     string
-//     bool
-//     map[string]interface{}
-//     []interface{}
-//     nil
 //
+//	float64
+//	string
+//	bool
+//	map[string]interface{}
+//	[]interface{}
+//	nil
 type JSONParseTask struct {
 	BaseTask `mapstructure:",squash"`
 	Path     string `json:"path"`
