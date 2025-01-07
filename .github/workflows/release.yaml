@@ -1,53 +1,50 @@
 name: Release docker images
 on:
   push:
-    branches: [release-staging, release-prod]
+    tags:
+      - v**
+
+env:
+  ECR_ENABLED: true
+  ECR_REPO: public.ecr.aws/l9h3g6c6/injective-price-oracle
+  GHCR_ENABLED: false
+  GHCR_REPO: ghcr.io/injectivelabs/injective-price-oracle
 
 jobs:
-  release-staging:
+  multi-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.ref == 'refs/heads/release-staging'
+    timeout-minutes: 30
     steps:
-      - name: Checkout injective-price-oracle
+      - name: Checkout injective-abacus
         uses: actions/checkout@master
-        with:
-          repository: InjectiveLabs/injective-price-oracle
-          ref: release-staging
-          token: ${{ secrets.GH_TOKEN }}
-          path: ./injective-price-oracle
-      - name: Build image
-        run: |
-          cd injective-price-oracle
-          docker build -t public.ecr.aws/l9h3g6c6/injective-price-oracle:staging .
-      - name: Push image
-        run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_KEY }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET }}
-          aws configure set region us-east-1
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/l9h3g6c6
-          docker push public.ecr.aws/l9h3g6c6/injective-price-oracle:staging
 
-  release-prod:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.ref == 'refs/heads/release-prod'
-    steps:
-      - name: Checkout injective-price-oracle
-        uses: actions/checkout@master
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
         with:
-          repository: InjectiveLabs/injective-price-oracle
-          ref: release-prod
-          token: ${{ secrets.GH_TOKEN }}
-          path: ./injective-price-oracle
-      - name: Build image
+          platforms: linux/amd64,linux/arm64
+
+      - name: Log-in to ghcr.io
+        if: env.GHCR_ENABLED == 'true'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Login to Public ECR
+        if: env.ECR_ENABLED == 'true'
+        uses: docker/login-action@v2
+        with:
+          registry: public.ecr.aws
+          username: ${{ secrets.AWS_KEY }}
+          password: ${{ secrets.AWS_SECRET }}
+        env:
+          AWS_REGION: us-east-1
+
+      - name: Build
+        env:
+          GH_USER: ${{ secrets.GH_USER }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          cd injective-price-oracle
-          docker build -t public.ecr.aws/l9h3g6c6/injective-price-oracle:prod .
-      - name: Push image
-        run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_KEY }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET }}
-          aws configure set region us-east-1
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/l9h3g6c6
-          docker push public.ecr.aws/l9h3g6c6/injective-price-oracle:prod
+          TAG=${{ github.ref_name }}
+          [[ $ECR_ENABLED == "false" ]] || docker buildx build --tag $ECR_REPO:$TAG --tag $ECR_REPO:latest --platform linux/amd64,linux/arm64 --push .
+          [[ $GHCR_ENABLED == "false" ]] || docker buildx build --tag $GHCR_REPO:$TAG --tag $GHCR_REPO:latest --platform linux/amd64,linux/arm64 --push .
