@@ -41,9 +41,6 @@ jobs:
           AWS_REGION: us-east-1
 
       - name: Build
-        env:
-          GH_USER: ${{ secrets.GH_USER }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           TAG=${{ github.ref_name }}
           [[ $ECR_ENABLED == "false" ]] || docker buildx build --tag $ECR_REPO:$TAG --tag $ECR_REPO:latest --platform linux/amd64,linux/arm64 --push .
