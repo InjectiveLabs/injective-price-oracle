@@ -11,14 +11,13 @@ import (
 
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
+	"github.com/InjectiveLabs/sdk-go/client/common"
 	log "github.com/InjectiveLabs/suplog"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	cli "github.com/jawher/mow.cli"
 	"github.com/pkg/errors"
 	"github.com/xlab/closer"
-
-	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
-	"github.com/InjectiveLabs/sdk-go/client/common"
 
 	"github.com/InjectiveLabs/injective-price-oracle/oracle"
 	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
@@ -147,16 +146,31 @@ func oracleCmd(cmd *cli.Cmd) {
 		if err != nil {
 			log.WithError(err).Fatalln("failed to initialize cosmos client context")
 		}
-		clientCtx = clientCtx.WithNodeURI(network.TmEndpoint)
-		tmRPC, err := rpchttp.New(network.TmEndpoint, "/websocket")
+		var tmEndpoint string
+		if tendermintRPC != nil && *tendermintRPC != "" {
+			tmEndpoint = *tendermintRPC // env var
+		} else {
+			tmEndpoint = network.TmEndpoint //sdk-go
+		}
+
+		clientCtx = clientCtx.WithNodeURI(tmEndpoint)
+		tmRPC, err := rpchttp.New(tmEndpoint, "/websocket")
 		if err != nil {
 			log.WithError(err).Fatalln("failed to connect to tendermint RPC")
 		}
+		var grpcEndpoint string
+		if cosmosGRPC != nil && *cosmosGRPC != "" {
+			grpcEndpoint = *cosmosGRPC // env var
+		} else {
+			grpcEndpoint = network.ChainGrpcEndpoint // sdk-go
+		}
+		network.ChainGrpcEndpoint = grpcEndpoint
+
 		clientCtx = clientCtx.WithClient(tmRPC)
 		cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionGasPrices(*cosmosGasPrices))
 		if err != nil {
 			log.WithError(err).WithFields(log.Fields{
-				"endpoint": *cosmosGRPC,
+				"endpoint": grpcEndpoint,
 			}).Fatalln("failed to connect to daemon, is injectived running?")
 		}
 		closer.Bind(func() {
