@@ -35,6 +35,7 @@ func initCosmosOptions(
 	cmd *cli.Cmd,
 	cosmosChainID **string,
 	cosmosGRPC **string,
+	cosmosStreamGRPC **string,
 	tendermintRPC **string,
 	cosmosGasPrices **string,
 	networkNode **string,
@@ -51,6 +52,13 @@ func initCosmosOptions(
 		Desc:   "Cosmos GRPC querying endpoint",
 		EnvVar: "ORACLE_COSMOS_GRPC",
 		Value:  "tcp://localhost:9900",
+	})
+
+	*cosmosStreamGRPC = cmd.String(cli.StringOpt{
+		Name:   "cosmos-stream-grpc",
+		Desc:   "Cosmos Stream GRPC querying endpoint",
+		EnvVar: "ORACLE_COSMOS_STREAM_GRPC",
+		Value:  "tcp://localhost:9999",
 	})
 
 	*tendermintRPC = cmd.String(cli.StringOpt{

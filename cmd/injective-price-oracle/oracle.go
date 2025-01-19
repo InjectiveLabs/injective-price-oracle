@@ -29,11 +29,12 @@ import (
 func oracleCmd(cmd *cli.Cmd) {
 	var (
 		// Cosmos params
-		cosmosChainID   *string
-		cosmosGRPC      *string
-		tendermintRPC   *string
-		cosmosGasPrices *string
-		networkNode     *string
+		cosmosChainID    *string
+		cosmosGRPC       *string
+		cosmosStreamGRPC *string
+		tendermintRPC    *string
+		cosmosGasPrices  *string
+		networkNode      *string
 
 		// Cosmos Key Management
 		cosmosKeyringDir     *string
@@ -67,6 +68,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		cmd,
 		&cosmosChainID,
 		&cosmosGRPC,
+		&cosmosStreamGRPC,
 		&tendermintRPC,
 		&cosmosGasPrices,
 		&networkNode,
@@ -146,31 +148,29 @@ func oracleCmd(cmd *cli.Cmd) {
 		if err != nil {
 			log.WithError(err).Fatalln("failed to initialize cosmos client context")
 		}
-		var tmEndpoint string
+
 		if tendermintRPC != nil && *tendermintRPC != "" {
-			tmEndpoint = *tendermintRPC // env var
-		} else {
-			tmEndpoint = network.TmEndpoint //sdk-go
+			network.TmEndpoint = *tendermintRPC
 		}
 
-		clientCtx = clientCtx.WithNodeURI(tmEndpoint)
-		tmRPC, err := rpchttp.New(tmEndpoint, "/websocket")
+		clientCtx = clientCtx.WithNodeURI(network.TmEndpoint)
+		tmRPC, err := rpchttp.New(network.TmEndpoint, "/websocket")
 		if err != nil {
 			log.WithError(err).Fatalln("failed to connect to tendermint RPC")
 		}
-		var grpcEndpoint string
+
 		if cosmosGRPC != nil && *cosmosGRPC != "" {
-			grpcEndpoint = *cosmosGRPC // env var
-		} else {
-			grpcEndpoint = network.ChainGrpcEndpoint // sdk-go
+			network.ChainGrpcEndpoint = *cosmosGRPC // env var
 		}
-		network.ChainGrpcEndpoint = grpcEndpoint
+		if cosmosStreamGRPC != nil && *cosmosStreamGRPC != "" {
+			network.ChainStreamGrpcEndpoint = *cosmosStreamGRPC // env var
+		}
 
 		clientCtx = clientCtx.WithClient(tmRPC)
 		cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionGasPrices(*cosmosGasPrices))
 		if err != nil {
 			log.WithError(err).WithFields(log.Fields{
-				"endpoint": grpcEndpoint,
+				"endpoint": network.ChainGrpcEndpoint,
 			}).Fatalln("failed to connect to daemon, is injectived running?")
 		}
 		closer.Bind(func() {
