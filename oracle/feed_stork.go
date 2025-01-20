@@ -49,7 +49,7 @@ func NewStorkPriceFeed(storkFetcher StorkFetcher, cfg *FeedConfig) (PricePuller,
 			return nil, err
 		}
 
-		if interval < 30*time.Second {
+		if interval < time.Second {
 			err = errors.Wrapf(err, "failed to parse pull interval: %s (minimum interval = 30s)", cfg.PullInterval)
 			return nil, err
 		}

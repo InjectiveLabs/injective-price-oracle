@@ -78,6 +78,7 @@ services:
       ORACLE_SERVICE_WAIT_TIMEOUT: "1m"
       ORACLE_COSMOS_CHAIN_ID: injective-1
       ORACLE_COSMOS_GRPC: tcp://sentry0.injective.network:9900
+      ORACLE_COSMOS_STREAM_GRPC: tcp://sentry0.injective.network:9999
       ORACLE_TENDERMINT_RPC: http://sentry0.injective.network:26657
       ORACLE_COSMOS_GAS_PRICES: 500000000inj
       # keyring config
@@ -175,10 +176,10 @@ During development sometimes one needs to evaluate if his TOML file is correct a
 
 Probe does the following:
 
-* Loads TOML and parses the pipleine
+* Loads TOML and parses the pipeline
 * Created a dynamic price feed, as if it was orchestrated in the oracle
 * Tries to pull the price once, using the pipeline
-* Prints the anwer or an error
+* Prints the answer or an error
 
 Example:
 

@@ -11,14 +11,13 @@ import (
 
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
+	"github.com/InjectiveLabs/sdk-go/client/common"
 	log "github.com/InjectiveLabs/suplog"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	cli "github.com/jawher/mow.cli"
 	"github.com/pkg/errors"
 	"github.com/xlab/closer"
-
-	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
-	"github.com/InjectiveLabs/sdk-go/client/common"
 
 	"github.com/InjectiveLabs/injective-price-oracle/oracle"
 	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
@@ -30,11 +29,12 @@ import (
 func oracleCmd(cmd *cli.Cmd) {
 	var (
 		// Cosmos params
-		cosmosChainID   *string
-		cosmosGRPC      *string
-		tendermintRPC   *string
-		cosmosGasPrices *string
-		networkNode     *string
+		cosmosChainID    *string
+		cosmosGRPC       *string
+		cosmosStreamGRPC *string
+		tendermintRPC    *string
+		cosmosGasPrices  *string
+		networkNode      *string
 
 		// Cosmos Key Management
 		cosmosKeyringDir     *string
@@ -68,6 +68,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		cmd,
 		&cosmosChainID,
 		&cosmosGRPC,
+		&cosmosStreamGRPC,
 		&tendermintRPC,
 		&cosmosGasPrices,
 		&networkNode,
@@ -147,16 +148,29 @@ func oracleCmd(cmd *cli.Cmd) {
 		if err != nil {
 			log.WithError(err).Fatalln("failed to initialize cosmos client context")
 		}
+
+		if tendermintRPC != nil && *tendermintRPC != "" {
+			network.TmEndpoint = *tendermintRPC
+		}
+
 		clientCtx = clientCtx.WithNodeURI(network.TmEndpoint)
 		tmRPC, err := rpchttp.New(network.TmEndpoint, "/websocket")
 		if err != nil {
 			log.WithError(err).Fatalln("failed to connect to tendermint RPC")
 		}
+
+		if cosmosGRPC != nil && *cosmosGRPC != "" {
+			network.ChainGrpcEndpoint = *cosmosGRPC // env var
+		}
+		if cosmosStreamGRPC != nil && *cosmosStreamGRPC != "" {
+			network.ChainStreamGrpcEndpoint = *cosmosStreamGRPC // env var
+		}
+
 		clientCtx = clientCtx.WithClient(tmRPC)
 		cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionGasPrices(*cosmosGasPrices))
 		if err != nil {
 			log.WithError(err).WithFields(log.Fields{
-				"endpoint": *cosmosGRPC,
+				"endpoint": network.ChainGrpcEndpoint,
 			}).Fatalln("failed to connect to daemon, is injectived running?")
 		}
 		closer.Bind(func() {
