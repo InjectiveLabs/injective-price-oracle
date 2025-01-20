@@ -154,24 +154,24 @@ func ConvertSignedPrice(signeds SignedPrice) oracletypes.SignedPriceOfAssetPair 
 
 	signedPriceOfAssetPair.Signature = common.Hex2Bytes(signature)
 	signedPriceOfAssetPair.PublisherKey = signeds.PublisherKey
-	signedPriceOfAssetPair.Timestamp = ConvertTimestampToSecond(signeds.TimestampedSignature.Timestamp)
+	signedPriceOfAssetPair.Timestamp = convertTimestampToNanosecond(signeds.TimestampedSignature.Timestamp)
 	signedPriceOfAssetPair.Price = signeds.Price
 
 	return signedPriceOfAssetPair
 }
 
-func ConvertTimestampToSecond(timestamp uint64) uint64 {
+func convertTimestampToNanosecond(timestamp uint64) uint64 {
 	switch {
-	// nanosecond
-	case timestamp > 1e18:
-		return timestamp / uint64(1_000_000_000)
-	// microsecond
-	case timestamp > 1e15:
-		return timestamp / uint64(1_000_000)
-	// millisecond
-	case timestamp > 1e12:
-		return timestamp / uint64(1_000)
-	// second
+	// seconds to nanoseconds
+	case timestamp < 1e9:
+		return timestamp * uint64(1_000_000_000)
+	// milliseconds to nanoseconds
+	case timestamp < 1e12:
+		return timestamp * uint64(1_000_000)
+	// microseconds to nanoseconds
+	case timestamp < 1e15:
+		return timestamp * uint64(1_000)
+	// already in nanoseconds
 	default:
 		return timestamp
 	}

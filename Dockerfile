@@ -13,7 +13,7 @@ RUN rm ./architecture
 WORKDIR /src
 COPY go.mod .
 COPY go.sum .
-RUN go mod download
+RUN go mod tidy
 COPY . .
 #install binary
 RUN make install
