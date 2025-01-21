@@ -394,6 +394,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 		}
 
 		ts := time.Now()
+		log.Infof("%v", msgs)
 		txResp, err := s.cosmosClient.SyncBroadcastMsg(msgs...)
 		if err != nil {
 			metrics.ReportFuncError(s.svcTags)

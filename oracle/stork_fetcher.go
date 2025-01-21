@@ -174,7 +174,8 @@ func (f *storkFetcher) startReadingMessages() error {
 			// Safely update the latestPairs with a write lock
 			f.mu.Lock()
 			for key, value := range newPairs {
-				f.latestPairs[key] = value
+				var v = value
+				f.latestPairs[key] = v
 			}
 			f.mu.Unlock()
 
