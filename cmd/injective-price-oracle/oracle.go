@@ -191,7 +191,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		var storkEnabled bool
 		storkMap := make(map[string]struct{})
 
-		feedConfigs := make([]*oracle.FeedConfig, 0, 10)
+		feedConfigs := make(map[string]*oracle.FeedConfig)
 		if len(*feedsDir) > 0 {
 			err := filepath.WalkDir(*feedsDir, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
@@ -221,7 +221,7 @@ func oracleCmd(cmd *cli.Cmd) {
 					storkMap[feedCfg.Ticker] = struct{}{}
 				}
 
-				feedConfigs = append(feedConfigs, feedCfg)
+				feedConfigs[filepath.Base(path)] = feedCfg
 
 				return nil
 			})

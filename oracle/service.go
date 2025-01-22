@@ -142,7 +142,7 @@ func NewService(
 	cosmosClient chainclient.ChainClient,
 	exchangeQueryClient exchangetypes.QueryClient,
 	oracleQueryClient oracletypes.QueryClient,
-	feedConfigs []*FeedConfig,
+	feedConfigs map[string]*FeedConfig,
 	storkFetcher StorkFetcher,
 ) (Service, error) {
 	svc := &oracleSvc{
