@@ -455,7 +455,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 				}
 			}
 			pricesMeta[priceData.OracleType.String()]++
-			pricesBatch[priceData.OracleType.String()+priceData.Symbol] = priceData
+			pricesBatch[priceData.OracleType.String()+":"+priceData.Symbol] = priceData
 
 			if len(pricesBatch) >= commitPriceBatchSizeLimit {
 				prevBatch, prevMeta := resetBatch()
