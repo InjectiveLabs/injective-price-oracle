@@ -189,9 +189,9 @@ func oracleCmd(cmd *cli.Cmd) {
 		}
 
 		var storkEnabled bool
-		var storkTickers []string
+		storkMap := make(map[string]struct{})
 
-		feedConfigs := make([]*oracle.FeedConfig, 0, 10)
+		feedConfigs := make(map[string]*oracle.FeedConfig)
 		if len(*feedsDir) > 0 {
 			err := filepath.WalkDir(*feedsDir, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
@@ -218,10 +218,10 @@ func oracleCmd(cmd *cli.Cmd) {
 
 				if feedCfg.ProviderName == oracle.FeedProviderStork.String() {
 					storkEnabled = true
-					storkTickers = append(storkTickers, feedCfg.Ticker)
+					storkMap[feedCfg.Ticker] = struct{}{}
 				}
 
-				feedConfigs = append(feedConfigs, feedCfg)
+				feedConfigs[filepath.Base(path)] = feedCfg
 
 				return nil
 			})
@@ -238,6 +238,11 @@ func oracleCmd(cmd *cli.Cmd) {
 		var storkFetcher oracle.StorkFetcher
 
 		if storkEnabled {
+			var storkTickers []string
+			for ticker := range storkMap {
+				storkTickers = append(storkTickers, ticker)
+			}
+
 			storkFetcher = oracle.NewStorkFetcher(*websocketSubscribeMessage, storkTickers)
 		}
 

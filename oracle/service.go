@@ -142,7 +142,7 @@ func NewService(
 	cosmosClient chainclient.ChainClient,
 	exchangeQueryClient exchangetypes.QueryClient,
 	oracleQueryClient oracletypes.QueryClient,
-	feedConfigs []*FeedConfig,
+	feedConfigs map[string]*FeedConfig,
 	storkFetcher StorkFetcher,
 ) (Service, error) {
 	svc := &oracleSvc{
@@ -328,7 +328,8 @@ func (s *oracleSvc) composeStorkOracleMsgs(priceBatch []*PriceData) (result []co
 	}
 
 	assetPairs := make([]*oracletypes.AssetPair, 0)
-	for _, priceData := range priceBatch {
+	for _, pData := range priceBatch {
+		var priceData = pData
 		if priceData.OracleType != oracletypes.OracleType_Stork {
 			continue
 		}
@@ -364,20 +365,20 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 	defer doneFn()
 
 	expirationTimer := time.NewTimer(commitPriceBatchTimeLimit)
-	pricesBatch := make([]*PriceData, 0, commitPriceBatchSizeLimit)
+	pricesBatch := make(map[string]*PriceData)
 	pricesMeta := make(map[string]int)
 
-	resetBatch := func() ([]*PriceData, map[string]int) {
+	resetBatch := func() (map[string]*PriceData, map[string]int) {
 		expirationTimer.Reset(commitPriceBatchTimeLimit)
 
 		prev := pricesBatch
 		prevMeta := pricesMeta
-		pricesBatch = make([]*PriceData, 0, commitPriceBatchSizeLimit)
+		pricesBatch = make(map[string]*PriceData)
 		pricesMeta = make(map[string]int)
 		return prev, prevMeta
 	}
 
-	submitBatch := func(currentBatch []*PriceData, currentMeta map[string]int, timeout bool) {
+	submitBatch := func(currentBatch map[string]*PriceData, currentMeta map[string]int, timeout bool) {
 		if len(currentBatch) == 0 {
 			return
 		}
@@ -387,7 +388,12 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			"timeout":    timeout,
 		})
 
-		msgs := s.composeMsgs(currentBatch)
+		var priceBatch []*PriceData
+		for _, msg := range currentBatch {
+			priceBatch = append(priceBatch, msg)
+		}
+
+		msgs := s.composeMsgs(priceBatch)
 		if len(msgs) == 0 {
 			batchLog.Debugf("pipeline composed no messages, so do nothing")
 			return
@@ -449,7 +455,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 				}
 			}
 			pricesMeta[priceData.OracleType.String()]++
-			pricesBatch = append(pricesBatch, priceData)
+			pricesBatch[priceData.OracleType.String()+":"+priceData.Symbol] = priceData
 
 			if len(pricesBatch) >= commitPriceBatchSizeLimit {
 				prevBatch, prevMeta := resetBatch()
