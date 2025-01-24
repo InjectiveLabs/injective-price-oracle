@@ -43,5 +43,5 @@ jobs:
       - name: Build
         run: |
           TAG=${{ github.ref_name }}
-          [[ $ECR_ENABLED == "false" ]] || docker buildx build --tag $ECR_REPO:$TAG --tag $ECR_REPO:latest --platform linux/amd64,linux/arm64 --push .
+          [[ $ECR_ENABLED == "false" ]] || docker buildx build --tag $ECR_REPO:$TAG --tag $ECR_REPO:latest --platform linux/amd64 --push .
           [[ $GHCR_ENABLED == "false" ]] || docker buildx build --tag $GHCR_REPO:$TAG --tag $GHCR_REPO:latest --platform linux/amd64 --push .
