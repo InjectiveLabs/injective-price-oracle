@@ -174,7 +174,7 @@ func (f *storkFetcher) startReadingMessages() error {
 					continue
 				}
 
-				tsReference := asset.SignedPrices[0].TimestampedSignature.Timestamp
+				tsReferenceInSeconds := ConvertTimestampToSecond(asset.SignedPrices[0].TimestampedSignature.Timestamp)
 
 				pair := ConvertDataToAssetPair(asset, assetId, tsReference)
 				newPairs[assetId] = &pair
