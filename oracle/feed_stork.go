@@ -140,7 +140,6 @@ func ConvertDataToAssetPair(data Data, assetId string, refTimestamp uint64) (res
 		newSignedPriceAssetPair := ConvertSignedPrice(data.SignedPrices[i])
 		// newSignedPriceAssetPair.Timestamp is in seconds
 		if refTimestamp != newSignedPriceAssetPair.Timestamp {
-			log.Warningf("timestamp mismatch: %d != %d", ConvertTimestampToSecond(refTimestamp), newSignedPriceAssetPair.Timestamp)
 			continue
 		}
 		signedPricesOfAssetPair = append(signedPricesOfAssetPair, &newSignedPriceAssetPair)
