@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	messageTypeInvalid      messageType = "invalid_message"
-	messageTypeOraclePrices messageType = "oracle_prices"
-	messageTypeSubscribe    messageType = "subscribe"
+	messageTypeInvalid            messageType = "invalid_message"
+	messageTypeOraclePrices       messageType = "oracle_prices"
+	messageTypeSubscribe          messageType = "subscribe"
+	MaxStorkTimestampIntervalNano             = 500_000_000 // 5000ms
 )
 
 var ErrInvalidMessage = errors.New("received invalid message")
@@ -167,7 +168,15 @@ func (f *storkFetcher) startReadingMessages() error {
 			// Update the cached asset pairs
 			newPairs := make(map[string]*oracletypes.AssetPair, len(assetIds))
 			for _, assetId := range assetIds {
-				pair := ConvertDataToAssetPair(data[assetId], assetId)
+				asset := data[assetId]
+				if len(asset.SignedPrices) == 0 {
+					log.Warningln("no signed prices found for asset:", assetId)
+					continue
+				}
+
+				tsReferenceInSeconds := ConvertTimestampToSecond(asset.SignedPrices[0].TimestampedSignature.Timestamp)
+
+				pair := ConvertDataToAssetPair(asset, assetId, tsReferenceInSeconds)
 				newPairs[assetId] = &pair
 			}
 

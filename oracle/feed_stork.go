@@ -134,10 +134,15 @@ func (f *storkPriceFeed) PullPrice(_ context.Context) (
 }
 
 // ConvertDataToAssetPair converts data get from websocket to list of asset pairs
-func ConvertDataToAssetPair(data Data, assetId string) (result oracletypes.AssetPair) {
+func ConvertDataToAssetPair(data Data, assetId string, refTimestamp uint64) (result oracletypes.AssetPair) {
 	var signedPricesOfAssetPair []*oracletypes.SignedPriceOfAssetPair
 	for i := range data.SignedPrices {
 		newSignedPriceAssetPair := ConvertSignedPrice(data.SignedPrices[i])
+		// newSignedPriceAssetPair.Timestamp is in seconds
+		if refTimestamp != newSignedPriceAssetPair.Timestamp {
+			log.Warningf("timestamp mismatch: %d != %d", ConvertTimestampToSecond(refTimestamp), newSignedPriceAssetPair.Timestamp)
+			continue
+		}
 		signedPricesOfAssetPair = append(signedPricesOfAssetPair, &newSignedPriceAssetPair)
 	}
 	result.SignedPrices = signedPricesOfAssetPair
