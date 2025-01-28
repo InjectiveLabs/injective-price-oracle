@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	messageTypeInvalid      messageType = "invalid_message"
-	messageTypeOraclePrices messageType = "oracle_prices"
-	messageTypeSubscribe    messageType = "subscribe"
+	messageTypeInvalid            messageType = "invalid_message"
+	messageTypeOraclePrices       messageType = "oracle_prices"
+	messageTypeSubscribe          messageType = "subscribe"
+	MaxStorkTimestampIntervalNano             = 500_000_000 // 5000ms
 )
 
 var ErrInvalidMessage = errors.New("received invalid message")
@@ -167,7 +168,17 @@ func (f *storkFetcher) startReadingMessages() error {
 			// Update the cached asset pairs
 			newPairs := make(map[string]*oracletypes.AssetPair, len(assetIds))
 			for _, assetId := range assetIds {
-				pair := ConvertDataToAssetPair(data[assetId], assetId)
+				asset := data[assetId]
+				timestamp, err := getTimestampInRange(asset)
+				if err != nil {
+					metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
+						s.Count("feed_provider.stork.max_diff_threshold", 1, tagSpec, 1)
+					}, f.svcTags)
+					f.logger.Warningln("error finding timestamp:", err)
+					continue
+				}
+
+				pair := ConvertDataToAssetPair(asset, assetId, timestamp)
 				newPairs[assetId] = &pair
 			}
 
@@ -184,6 +195,30 @@ func (f *storkFetcher) startReadingMessages() error {
 			f.logger.Warningln("received unknown message type:", msgResp.Type)
 		}
 	}
+}
+
+func getTimestampInRange(asset Data) (uint64, error) {
+	var newestTimestamp uint64
+	oldestTimestamp := ^uint64(0)
+
+	for _, signedPrice := range asset.SignedPrices {
+		if signedPrice.TimestampedSignature.Timestamp > newestTimestamp {
+			newestTimestamp = signedPrice.TimestampedSignature.Timestamp
+		}
+		if signedPrice.TimestampedSignature.Timestamp < oldestTimestamp {
+			oldestTimestamp = signedPrice.TimestampedSignature.Timestamp
+		}
+	}
+
+	if newestTimestamp == 0 {
+		return 0, fmt.Errorf("asset '%s' has no price timestamps", asset.AssetID)
+	}
+
+	if newestTimestamp-oldestTimestamp > MaxStorkTimestampIntervalNano {
+		return 0, fmt.Errorf("assset '%s' price timestamps between %d and %d exceed threshold %d", asset.AssetID, oldestTimestamp, newestTimestamp, MaxStorkTimestampIntervalNano)
+	}
+
+	return newestTimestamp, nil
 }
 
 type messageResponse struct {

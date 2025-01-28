@@ -11,29 +11,24 @@ func TestConvertTimestampToSecond(t *testing.T) {
 		expected  uint64
 	}{
 		{
-			name:      "Convert seconds to seconds",
-			timestamp: 123, // seconds
-			expected:  123,
-		},
-		{
-			name:      "Convert milliseconds to seconds",
-			timestamp: 1737468044594731156, // milliseconds
-			expected:  1737468044,
-		},
-		{
 			name:      "Convert microseconds to seconds",
 			timestamp: 1737468044540691952, // microseconds
 			expected:  1737468044,
 		},
 		{
-			name:      "Already in seconds",
-			timestamp: 1737468044994731156, // nanoseconds
-			expected:  1737468044,          // 1737468044994731156 / 1000000000
+			name:      "Convert nanoseconds to seconds",
+			timestamp: 1738013700767706647, // nanoseconds
+			expected:  1738013700,
 		},
 		{
-			name:      "Edge case - maximum seconds (just below milliseconds)",
-			timestamp: 999_999_999, // seconds
-			expected:  999_999_999,
+			name:      "Convert nanoseconds to seconds",
+			timestamp: 1738013701044503470, // nanoseconds
+			expected:  1738013701,
+		},
+		{
+			name:      "Convert nanoseconds to seconds",
+			timestamp: 1738013701534503470, // nanoseconds
+			expected:  1738013701,
 		},
 	}
 

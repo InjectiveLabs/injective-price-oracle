@@ -134,10 +134,10 @@ func (f *storkPriceFeed) PullPrice(_ context.Context) (
 }
 
 // ConvertDataToAssetPair converts data get from websocket to list of asset pairs
-func ConvertDataToAssetPair(data Data, assetId string) (result oracletypes.AssetPair) {
+func ConvertDataToAssetPair(data Data, assetId string, timestamp uint64) (result oracletypes.AssetPair) {
 	var signedPricesOfAssetPair []*oracletypes.SignedPriceOfAssetPair
 	for i := range data.SignedPrices {
-		newSignedPriceAssetPair := ConvertSignedPrice(data.SignedPrices[i])
+		newSignedPriceAssetPair := ConvertSignedPrice(data.SignedPrices[i], timestamp)
 		signedPricesOfAssetPair = append(signedPricesOfAssetPair, &newSignedPriceAssetPair)
 	}
 	result.SignedPrices = signedPricesOfAssetPair
@@ -147,14 +147,14 @@ func ConvertDataToAssetPair(data Data, assetId string) (result oracletypes.Asset
 }
 
 // ConvertSignedPrice converts signed price to SignedPriceOfAssetPair of Stork
-func ConvertSignedPrice(signeds SignedPrice) oracletypes.SignedPriceOfAssetPair {
+func ConvertSignedPrice(signeds SignedPrice, timestamp uint64) oracletypes.SignedPriceOfAssetPair {
 	var signedPriceOfAssetPair oracletypes.SignedPriceOfAssetPair
 
 	signature := CombineSignatureToString(signeds.TimestampedSignature.Signature)
 
 	signedPriceOfAssetPair.Signature = common.Hex2Bytes(signature)
 	signedPriceOfAssetPair.PublisherKey = signeds.PublisherKey
-	signedPriceOfAssetPair.Timestamp = ConvertTimestampToSecond(signeds.TimestampedSignature.Timestamp)
+	signedPriceOfAssetPair.Timestamp = ConvertTimestampToSecond(timestamp)
 	signedPriceOfAssetPair.Price = signeds.Price
 
 	return signedPriceOfAssetPair
