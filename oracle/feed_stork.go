@@ -138,6 +138,7 @@ func ConvertDataToAssetPair(data Data, assetId string, refTimestamp uint64) (res
 	var signedPricesOfAssetPair []*oracletypes.SignedPriceOfAssetPair
 	for i := range data.SignedPrices {
 		newSignedPriceAssetPair := ConvertSignedPrice(data.SignedPrices[i])
+		// newSignedPriceAssetPair.Timestamp is in seconds
 		if ConvertTimestampToSecond(refTimestamp) != newSignedPriceAssetPair.Timestamp {
 			log.Warningf("timestamp mismatch: %d != %d", ConvertTimestampToSecond(refTimestamp), newSignedPriceAssetPair.Timestamp)
 			continue
