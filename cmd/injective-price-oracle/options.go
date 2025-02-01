@@ -38,6 +38,7 @@ func initCosmosOptions(
 	cosmosStreamGRPC **string,
 	tendermintRPC **string,
 	cosmosGasPrices **string,
+	cosmosGasAdjust **float64,
 	networkNode **string,
 ) {
 	*cosmosChainID = cmd.String(cli.StringOpt{
@@ -73,6 +74,13 @@ func initCosmosOptions(
 		Desc:   "Specify Cosmos chain transaction fees as sdk.Coins gas prices",
 		EnvVar: "ORACLE_COSMOS_GAS_PRICES",
 		Value:  "", // example: 500000000inj
+	})
+
+	*cosmosGasAdjust = cmd.Float64(cli.Float64Opt{
+		Name:   "cosmos-gas-adjust",
+		Desc:   "Specify Cosmos chain transaction fees gas adjustment factor",
+		EnvVar: "ORACLE_COSMOS_GAS_ADJUST",
+		Value:  1.5,
 	})
 
 	*networkNode = cmd.String(cli.StringOpt{

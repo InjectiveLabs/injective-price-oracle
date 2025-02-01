@@ -34,6 +34,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		cosmosStreamGRPC *string
 		tendermintRPC    *string
 		cosmosGasPrices  *string
+		cosmosGasAdjust  *float64
 		networkNode      *string
 
 		// Cosmos Key Management
@@ -71,6 +72,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		&cosmosStreamGRPC,
 		&tendermintRPC,
 		&cosmosGasPrices,
+		&cosmosGasAdjust,
 		&networkNode,
 	)
 
@@ -153,7 +155,6 @@ func oracleCmd(cmd *cli.Cmd) {
 			network.TmEndpoint = *tendermintRPC
 		}
 
-		clientCtx = clientCtx.WithNodeURI(network.TmEndpoint)
 		tmRPC, err := rpchttp.New(network.TmEndpoint, "/websocket")
 		if err != nil {
 			log.WithError(err).Fatalln("failed to connect to tendermint RPC")
@@ -166,8 +167,12 @@ func oracleCmd(cmd *cli.Cmd) {
 			network.ChainStreamGrpcEndpoint = *cosmosStreamGRPC // env var
 		}
 
-		clientCtx = clientCtx.WithClient(tmRPC)
-		cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionGasPrices(*cosmosGasPrices))
+		clientCtx = clientCtx.WithNodeURI(network.TmEndpoint).WithClient(tmRPC)
+		txFactory := chainclient.NewTxFactory(clientCtx)
+		txFactory = txFactory.WithGasAdjustment(*cosmosGasAdjust)
+		txFactory = txFactory.WithGasPrices(*cosmosGasPrices)
+
+		cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionTxFactory(&txFactory))
 		if err != nil {
 			log.WithError(err).WithFields(log.Fields{
 				"endpoint": network.ChainGrpcEndpoint,

@@ -81,6 +81,7 @@ services:
       ORACLE_COSMOS_STREAM_GRPC: tcp://sentry0.injective.network:9999
       ORACLE_TENDERMINT_RPC: http://sentry0.injective.network:26657
       ORACLE_COSMOS_GAS_PRICES: 500000000inj
+      ORACLE_COSMOS_GAS_ADJUST: 1.5
       # keyring config
       ORACLE_COSMOS_KEYRING: file
       ORACLE_COSMOS_KEYRING_DIR: /root/keyring-oracle
