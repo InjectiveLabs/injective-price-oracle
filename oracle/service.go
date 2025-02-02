@@ -48,7 +48,7 @@ type FeedConfig struct {
 type oracleSvc struct {
 	pricePullers        map[string]PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
-	cosmosClient        chainclient.ChainClient
+	cosmosClients       []chainclient.ChainClient
 	exchangeQueryClient exchangetypes.QueryClient
 	oracleQueryClient   oracletypes.QueryClient
 	config              *StorkConfig
@@ -93,7 +93,7 @@ type PriceFeedConfig struct {
 
 // getEnabledFeeds returns a mapping between ticker and price feeder config, this will query
 // the chain to fetch only those configs where current Cosmos sender is authorized as a relayer.
-func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
+func (s *oracleSvc) getEnabledFeeds(cosmosClient chainclient.ChainClient) map[string]PriceFeedConfig {
 	metrics.ReportFuncCall(s.svcTags)
 	doneFn := metrics.ReportFuncTiming(s.svcTags)
 	defer doneFn()
@@ -103,7 +103,7 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 
 	feeds := make(map[string]PriceFeedConfig)
 
-	sender := strings.ToLower(s.cosmosClient.FromAddress().String())
+	sender := strings.ToLower(cosmosClient.FromAddress().String())
 	res, err := s.oracleQueryClient.PriceFeedPriceStates(ctx, &oracletypes.QueryPriceFeedPriceStatesRequest{})
 	if err != nil {
 		metrics.ReportFuncError(s.svcTags)
@@ -139,18 +139,13 @@ func (s *oracleSvc) getEnabledFeeds() map[string]PriceFeedConfig {
 
 func NewService(
 	_ context.Context,
-	cosmosClient chainclient.ChainClient,
-	exchangeQueryClient exchangetypes.QueryClient,
-	oracleQueryClient oracletypes.QueryClient,
+	cosmosClients []chainclient.ChainClient,
 	feedConfigs map[string]*FeedConfig,
 	storkFetcher StorkFetcher,
 ) (Service, error) {
 	svc := &oracleSvc{
-		cosmosClient:        cosmosClient,
-		exchangeQueryClient: exchangeQueryClient,
-		oracleQueryClient:   oracleQueryClient,
-
-		logger: log.WithField("svc", "oracle"),
+		cosmosClients: cosmosClients,
+		logger:        log.WithField("svc", "oracle"),
 		svcTags: metrics.Tags{
 			"svc": "price_oracle",
 		},
@@ -269,9 +264,9 @@ const (
 	commitPriceBatchSizeLimit = 100
 )
 
-func (s *oracleSvc) composePriceFeedMsgs(priceBatch []*PriceData) (results []cosmtypes.Msg) {
+func composePriceFeedMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (results []cosmtypes.Msg) {
 	msg := &oracletypes.MsgRelayPriceFeedPrice{
-		Sender: s.cosmosClient.FromAddress().String(),
+		Sender: cosmosClient.FromAddress().String(),
 	}
 
 	for _, priceData := range priceBatch {
@@ -291,7 +286,7 @@ func (s *oracleSvc) composePriceFeedMsgs(priceBatch []*PriceData) (results []cos
 	return nil
 }
 
-func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
+func composeProviderFeedMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
 	if len(priceBatch) == 0 {
 		return nil
 	}
@@ -306,7 +301,7 @@ func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []c
 		msg, exist := providerToMsg[provider]
 		if !exist {
 			msg = &oracletypes.MsgRelayProviderPrices{
-				Sender:   s.cosmosClient.FromAddress().String(),
+				Sender:   cosmosClient.FromAddress().String(),
 				Provider: priceData.ProviderName,
 			}
 			providerToMsg[provider] = msg
@@ -322,7 +317,7 @@ func (s *oracleSvc) composeProviderFeedMsgs(priceBatch []*PriceData) (result []c
 	return result
 }
 
-func (s *oracleSvc) composeStorkOracleMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
+func composeStorkOracleMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
 	if len(priceBatch) == 0 {
 		return nil
 	}
@@ -341,7 +336,7 @@ func (s *oracleSvc) composeStorkOracleMsgs(priceBatch []*PriceData) (result []co
 
 	if len(assetPairs) > 0 {
 		msg := &oracletypes.MsgRelayStorkPrices{
-			Sender:     s.cosmosClient.FromAddress().String(),
+			Sender:     cosmosClient.FromAddress().String(),
 			AssetPairs: assetPairs,
 		}
 
@@ -352,10 +347,10 @@ func (s *oracleSvc) composeStorkOracleMsgs(priceBatch []*PriceData) (result []co
 	return result
 }
 
-func (s *oracleSvc) composeMsgs(priceBatch []*PriceData) (result []cosmtypes.Msg) {
-	result = append(result, s.composePriceFeedMsgs(priceBatch)...)
-	result = append(result, s.composeProviderFeedMsgs(priceBatch)...)
-	result = append(result, s.composeStorkOracleMsgs(priceBatch)...)
+func composeMsgs(cosmoClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
+	result = append(result, composePriceFeedMsgs(cosmoClient, priceBatch)...)
+	result = append(result, composeProviderFeedMsgs(cosmoClient, priceBatch)...)
+	result = append(result, composeStorkOracleMsgs(cosmoClient, priceBatch)...)
 	return result
 }
 
@@ -393,38 +388,43 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			priceBatch = append(priceBatch, msg)
 		}
 
-		msgs := s.composeMsgs(priceBatch)
-		if len(msgs) == 0 {
-			batchLog.Debugf("pipeline composed no messages, so do nothing")
-			return
-		}
-
 		ts := time.Now()
-		txResp, err := s.cosmosClient.SyncBroadcastMsg(msgs...)
-		if err != nil {
-			metrics.ReportFuncError(s.svcTags)
-			batchLog.WithError(err).Errorln("failed to SyncBroadcastMsg")
-			return
-		}
-
-		if txResp.TxResponse != nil {
-			if txResp.TxResponse.Code != 0 {
-				metrics.ReportFuncError(s.svcTags)
-				batchLog.WithFields(log.Fields{
-					"hash":     txResp.TxResponse.TxHash,
-					"err_code": txResp.TxResponse.Code,
-				}).Errorf("set price Tx error: %s", txResp.String())
-
+		for _, cosmoClient := range s.cosmosClients {
+			msgs := composeMsgs(cosmoClient, priceBatch)
+			if len(msgs) == 0 {
+				batchLog.Debugf("pipeline composed no messages, so do nothing")
 				return
 			}
-			for oracleType, count := range currentMeta {
-				metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
-					s.Count(fmt.Sprintf("price_oracle.%s.submitted.price.size", strings.ToLower(oracleType)), int64(count), tagSpec, 1)
-				}, s.svcTags)
+
+			txResp, err := cosmoClient.SyncBroadcastMsg(msgs...)
+			if err != nil {
+				metrics.ReportFuncError(s.svcTags)
+				batchLog.WithError(err).Errorln("failed to SyncBroadcastMsg")
+				continue
 			}
-			batchLog.WithField("height", txResp.TxResponse.Height).
-				WithField("hash", txResp.TxResponse.TxHash).
-				Infoln("sent Tx in", time.Since(ts))
+
+			if txResp.TxResponse != nil {
+				if txResp.TxResponse.Code != 0 {
+					metrics.ReportFuncError(s.svcTags)
+					batchLog.WithFields(log.Fields{
+						"cosmoClient": cosmoClient.ClientContext().From,
+						"hash":        txResp.TxResponse.TxHash,
+						"err_code":    txResp.TxResponse.Code,
+					}).Errorf("set price Tx error: %s", txResp.String())
+					continue
+
+				}
+				for oracleType, count := range currentMeta {
+					metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
+						s.Count(fmt.Sprintf("price_oracle.%s.submitted.price.size", strings.ToLower(oracleType)), int64(count), tagSpec, 1)
+					}, s.svcTags)
+				}
+				batchLog.
+					WithField("cosmoClient", cosmoClient.ClientContext().From).
+					WithField("height", txResp.TxResponse.Height).
+					WithField("hash", txResp.TxResponse.TxHash).
+					Infoln("sent Tx in", time.Since(ts))
+			}
 		}
 	}
 
