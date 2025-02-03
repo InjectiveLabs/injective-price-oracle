@@ -311,12 +311,12 @@ func NewCosmosClient(ctx context.Context, senderAddress cosmtypes.AccAddress, co
 
 	clientCtx, err := chainclient.NewClientContext(network.ChainId, senderAddress.String(), cosmosKeyring)
 	if err != nil {
-		log.WithError(err).Fatalln("failed to initialize cosmos client context")
+		return nil, err
 	}
 
 	tmRPC, err := rpchttp.New(network.TmEndpoint, "/websocket")
 	if err != nil {
-		log.WithError(err).Fatalln("failed to connect to tendermint RPC")
+		return nil, err
 	}
 
 	clientCtx = clientCtx.WithNodeURI(network.TmEndpoint).WithClient(tmRPC)
@@ -326,9 +326,6 @@ func NewCosmosClient(ctx context.Context, senderAddress cosmtypes.AccAddress, co
 
 	cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionTxFactory(&txFactory))
 	if err != nil {
-		log.WithError(err).WithFields(log.Fields{
-			"endpoint": network.ChainGrpcEndpoint,
-		}).Errorln("failed to connect to daemon, is injectived running?")
 		return nil, err
 	}
 	closer.Bind(func() {
