@@ -424,6 +424,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 					WithField("height", txResp.TxResponse.Height).
 					WithField("hash", txResp.TxResponse.TxHash).
 					Infoln("sent Tx in", time.Since(ts))
+				return
 			}
 		}
 	}

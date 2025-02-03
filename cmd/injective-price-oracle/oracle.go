@@ -328,7 +328,8 @@ func NewCosmosClient(ctx context.Context, senderAddress cosmtypes.AccAddress, co
 	if err != nil {
 		log.WithError(err).WithFields(log.Fields{
 			"endpoint": network.ChainGrpcEndpoint,
-		}).Fatalln("failed to connect to daemon, is injectived running?")
+		}).Errorln("failed to connect to daemon, is injectived running?")
+		return nil, err
 	}
 	closer.Bind(func() {
 		cosmosClient.Close()

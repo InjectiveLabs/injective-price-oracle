@@ -56,23 +56,23 @@ func initCosmosOptions(
 	})
 
 	cmd.StringsPtr(cosmosGRPCs, cli.StringsOpt{
-		Name:   "cosmos-grpcs",
+		Name:   "cosmos-grpc",
 		Desc:   "Cosmos GRPC querying endpoints",
-		EnvVar: "ORACLE_COSMOS_GRPCS",
+		EnvVar: "ORACLE_COSMOS_GRPC",
 		Value:  []string{"tcp://localhost:9900"},
 	})
 
 	cmd.StringsPtr(cosmosStreamGRPCs, cli.StringsOpt{
-		Name:   "cosmos-stream-grpcs",
+		Name:   "cosmos-stream-grpc",
 		Desc:   "Cosmos Stream GRPC querying endpoints",
-		EnvVar: "ORACLE_COSMOS_STREAM_GRPCS",
+		EnvVar: "ORACLE_COSMOS_STREAM_GRPC",
 		Value:  []string{"tcp://localhost:9999"},
 	})
 
 	cmd.StringsPtr(tendermintRPCs, cli.StringsOpt{
-		Name:   "tendermint-rpcs",
+		Name:   "tendermint-rpc",
 		Desc:   "Tendermint RPC endpoints",
-		EnvVar: "ORACLE_TENDERMINT_RPCS",
+		EnvVar: "ORACLE_TENDERMINT_RPC",
 		Value:  []string{"http://localhost:26657"},
 	})
 
