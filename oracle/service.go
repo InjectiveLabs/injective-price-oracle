@@ -389,6 +389,9 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 		}
 
 		ts := time.Now()
+		// Iterate over all cosmos clients and try to send the batch
+		// if one of the clients is successful, we return
+		// otherwise, we continue to the next client
 		for _, cosmosClient := range s.cosmosClients {
 			msgs := composeMsgs(cosmosClient, priceBatch)
 			if len(msgs) == 0 {
