@@ -185,6 +185,10 @@ func oracleCmd(cmd *cli.Cmd) {
 			cosmosClients = append(cosmosClients, cosmosClient)
 		}
 
+		if len(cosmosClients) == 0 {
+			log.Fatalln("no cosmos clients initialized")
+		}
+
 		var storkEnabled bool
 		storkMap := make(map[string]struct{})
 
@@ -333,7 +337,6 @@ func NewCosmosClient(ctx context.Context, senderAddress cosmtypes.AccAddress, co
 	})
 
 	log.Infoln("waiting for GRPC services")
-	time.Sleep(1 * time.Second)
 
 	daemonWaitCtx, cancelWait := context.WithTimeout(ctx, 10*time.Second)
 	defer cancelWait()

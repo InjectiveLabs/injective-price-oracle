@@ -389,14 +389,14 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 		}
 
 		ts := time.Now()
-		for _, cosmoClient := range s.cosmosClients {
-			msgs := composeMsgs(cosmoClient, priceBatch)
+		for _, cosmosClient := range s.cosmosClients {
+			msgs := composeMsgs(cosmosClient, priceBatch)
 			if len(msgs) == 0 {
 				batchLog.Debugf("pipeline composed no messages, so do nothing")
 				return
 			}
 
-			txResp, err := cosmoClient.SyncBroadcastMsg(msgs...)
+			txResp, err := cosmosClient.SyncBroadcastMsg(msgs...)
 			if err != nil {
 				metrics.ReportFuncError(s.svcTags)
 				batchLog.WithError(err).Errorln("failed to SyncBroadcastMsg")
@@ -407,9 +407,9 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 				if txResp.TxResponse.Code != 0 {
 					metrics.ReportFuncError(s.svcTags)
 					batchLog.WithFields(log.Fields{
-						"cosmoClient": cosmoClient.ClientContext().From,
-						"hash":        txResp.TxResponse.TxHash,
-						"err_code":    txResp.TxResponse.Code,
+						"cosmosClient": cosmosClient.ClientContext().From,
+						"hash":         txResp.TxResponse.TxHash,
+						"err_code":     txResp.TxResponse.Code,
 					}).Errorf("set price Tx error: %s", txResp.String())
 					continue
 
@@ -420,7 +420,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 					}, s.svcTags)
 				}
 				batchLog.
-					WithField("cosmoClient", cosmoClient.ClientContext().From).
+					WithField("cosmosClient", cosmosClient.ClientContext().From).
 					WithField("height", txResp.TxResponse.Height).
 					WithField("hash", txResp.TxResponse.TxHash).
 					Infoln("sent Tx in", time.Since(ts))
