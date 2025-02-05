@@ -33,57 +33,64 @@ func initGlobalOptions(
 
 func initCosmosOptions(
 	cmd *cli.Cmd,
-	cosmosChainID **string,
-	cosmosGRPC **string,
-	cosmosStreamGRPC **string,
-	tendermintRPC **string,
-	cosmosGasPrices **string,
-	cosmosGasAdjust **float64,
-	networkNode **string,
+	cosmosOverrideNetwork *bool,
+	cosmosChainID *string,
+	cosmosGRPCs *[]string,
+	cosmosStreamGRPCs *[]string,
+	tendermintRPCs *[]string,
+	cosmosGasPrices *string,
+	cosmosGasAdjust *float64,
+	networkNode *string,
 ) {
-	*cosmosChainID = cmd.String(cli.StringOpt{
+	cmd.BoolPtr(cosmosOverrideNetwork, cli.BoolOpt{
+		Name:   "cosmos-override-network",
+		Desc:   "Override the Cosmos network and node configuration.",
+		EnvVar: "ORACLE_COSMOS_OVERRIDE_NETWORK",
+		Value:  false,
+	})
+	cmd.StringPtr(cosmosChainID, cli.StringOpt{
 		Name:   "cosmos-chain-id",
 		Desc:   "Specify Chain ID of the Cosmos network.",
 		EnvVar: "ORACLE_COSMOS_CHAIN_ID",
 		Value:  "injective-1",
 	})
 
-	*cosmosGRPC = cmd.String(cli.StringOpt{
+	cmd.StringsPtr(cosmosGRPCs, cli.StringsOpt{
 		Name:   "cosmos-grpc",
-		Desc:   "Cosmos GRPC querying endpoint",
+		Desc:   "Cosmos GRPC querying endpoints",
 		EnvVar: "ORACLE_COSMOS_GRPC",
-		Value:  "tcp://localhost:9900",
+		Value:  []string{"tcp://localhost:9900"},
 	})
 
-	*cosmosStreamGRPC = cmd.String(cli.StringOpt{
+	cmd.StringsPtr(cosmosStreamGRPCs, cli.StringsOpt{
 		Name:   "cosmos-stream-grpc",
-		Desc:   "Cosmos Stream GRPC querying endpoint",
+		Desc:   "Cosmos Stream GRPC querying endpoints",
 		EnvVar: "ORACLE_COSMOS_STREAM_GRPC",
-		Value:  "tcp://localhost:9999",
+		Value:  []string{"tcp://localhost:9999"},
 	})
 
-	*tendermintRPC = cmd.String(cli.StringOpt{
+	cmd.StringsPtr(tendermintRPCs, cli.StringsOpt{
 		Name:   "tendermint-rpc",
-		Desc:   "Tendermint RPC endpoint",
+		Desc:   "Tendermint RPC endpoints",
 		EnvVar: "ORACLE_TENDERMINT_RPC",
-		Value:  "http://localhost:26657",
+		Value:  []string{"http://localhost:26657"},
 	})
 
-	*cosmosGasPrices = cmd.String(cli.StringOpt{
+	cmd.StringPtr(cosmosGasPrices, cli.StringOpt{
 		Name:   "cosmos-gas-prices",
 		Desc:   "Specify Cosmos chain transaction fees as sdk.Coins gas prices",
 		EnvVar: "ORACLE_COSMOS_GAS_PRICES",
 		Value:  "", // example: 500000000inj
 	})
 
-	*cosmosGasAdjust = cmd.Float64(cli.Float64Opt{
+	cmd.Float64Ptr(cosmosGasAdjust, cli.Float64Opt{
 		Name:   "cosmos-gas-adjust",
 		Desc:   "Specify Cosmos chain transaction fees gas adjustment factor",
 		EnvVar: "ORACLE_COSMOS_GAS_ADJUST",
 		Value:  1.5,
 	})
 
-	*networkNode = cmd.String(cli.StringOpt{
+	cmd.StringPtr(networkNode, cli.StringOpt{
 		Name:   "cosmos-network-node",
 		Desc:   "Specify network and node (e.g mainnet,lb)",
 		EnvVar: "ORACLE_NETWORK_NODE",

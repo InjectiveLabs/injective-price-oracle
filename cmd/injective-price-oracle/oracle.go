@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
-	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
 	"github.com/InjectiveLabs/sdk-go/client/common"
 	log "github.com/InjectiveLabs/suplog"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	cosmtypes "github.com/cosmos/cosmos-sdk/types"
 	cli "github.com/jawher/mow.cli"
 	"github.com/pkg/errors"
 	"github.com/xlab/closer"
@@ -23,19 +23,28 @@ import (
 	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 )
 
+type CosmosConfig struct {
+	tendermintRPC    string
+	cosmosGRPC       string
+	cosmosStreamGRPC string
+	cosmosGasPrices  string
+	cosmosGasAdjust  float64
+}
+
 // oracleCmd action runs the service
 //
 // $ injective-price-oracle start
 func oracleCmd(cmd *cli.Cmd) {
 	var (
 		// Cosmos params
-		cosmosChainID    *string
-		cosmosGRPC       *string
-		cosmosStreamGRPC *string
-		tendermintRPC    *string
-		cosmosGasPrices  *string
-		cosmosGasAdjust  *float64
-		networkNode      *string
+		cosmosOverrideNetwork bool
+		cosmosChainID         string
+		cosmosGRPCs           []string
+		cosmosStreamGRPCs     []string
+		tendermintRPCs        []string
+		cosmosGasPrices       string
+		cosmosGasAdjust       float64
+		networkNode           string
 
 		// Cosmos Key Management
 		cosmosKeyringDir     *string
@@ -67,10 +76,11 @@ func oracleCmd(cmd *cli.Cmd) {
 
 	initCosmosOptions(
 		cmd,
+		&cosmosOverrideNetwork,
 		&cosmosChainID,
-		&cosmosGRPC,
-		&cosmosStreamGRPC,
-		&tendermintRPC,
+		&cosmosGRPCs,
+		&cosmosStreamGRPCs,
+		&tendermintRPCs,
 		&cosmosGasPrices,
 		&cosmosGasAdjust,
 		&networkNode,
@@ -128,7 +138,7 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Fatalln("cannot really use Ledger for oracle service loop, since signatures msut be realtime")
 		}
 
-		networkNodeSplit := strings.Split(*networkNode, ",")
+		networkNodeSplit := strings.Split(networkNode, ",")
 		networkStr, node := networkNodeSplit[0], networkNodeSplit[1]
 		network := common.LoadNetwork(networkStr, node)
 
@@ -146,51 +156,37 @@ func oracleCmd(cmd *cli.Cmd) {
 		}
 
 		log.Infoln("using Injective Sender", senderAddress.String())
-		clientCtx, err := chainclient.NewClientContext(network.ChainId, senderAddress.String(), cosmosKeyring)
-		if err != nil {
-			log.WithError(err).Fatalln("failed to initialize cosmos client context")
+		cosmosClients := make([]chainclient.ChainClient, 0)
+
+		if cosmosOverrideNetwork {
+			for i := 0; i < len(tendermintRPCs); i++ {
+				cosmosClient, err := NewCosmosClient(ctx, senderAddress, cosmosKeyring, network, &CosmosConfig{
+					tendermintRPC:    tendermintRPCs[i],
+					cosmosGRPC:       cosmosGRPCs[i],
+					cosmosStreamGRPC: cosmosStreamGRPCs[i],
+					cosmosGasPrices:  cosmosGasPrices,
+					cosmosGasAdjust:  cosmosGasAdjust,
+				})
+				if err != nil {
+					log.WithError(err).Fatalln("failed to initialize cosmos client")
+				}
+
+				cosmosClients = append(cosmosClients, cosmosClient)
+			}
+		} else {
+			cosmosClient, err := NewCosmosClient(ctx, senderAddress, cosmosKeyring, network, &CosmosConfig{
+				cosmosGasPrices: cosmosGasPrices,
+				cosmosGasAdjust: cosmosGasAdjust,
+			})
+			if err != nil {
+				log.WithError(err).Fatalln("failed to initialize cosmos client")
+			}
+
+			cosmosClients = append(cosmosClients, cosmosClient)
 		}
 
-		if tendermintRPC != nil && *tendermintRPC != "" {
-			network.TmEndpoint = *tendermintRPC
-		}
-
-		tmRPC, err := rpchttp.New(network.TmEndpoint, "/websocket")
-		if err != nil {
-			log.WithError(err).Fatalln("failed to connect to tendermint RPC")
-		}
-
-		if cosmosGRPC != nil && *cosmosGRPC != "" {
-			network.ChainGrpcEndpoint = *cosmosGRPC // env var
-		}
-		if cosmosStreamGRPC != nil && *cosmosStreamGRPC != "" {
-			network.ChainStreamGrpcEndpoint = *cosmosStreamGRPC // env var
-		}
-
-		clientCtx = clientCtx.WithNodeURI(network.TmEndpoint).WithClient(tmRPC)
-		txFactory := chainclient.NewTxFactory(clientCtx)
-		txFactory = txFactory.WithGasAdjustment(*cosmosGasAdjust)
-		txFactory = txFactory.WithGasPrices(*cosmosGasPrices)
-
-		cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionTxFactory(&txFactory))
-		if err != nil {
-			log.WithError(err).WithFields(log.Fields{
-				"endpoint": network.ChainGrpcEndpoint,
-			}).Fatalln("failed to connect to daemon, is injectived running?")
-		}
-		closer.Bind(func() {
-			cosmosClient.Close()
-		})
-
-		log.Infoln("waiting for GRPC services")
-		time.Sleep(1 * time.Second)
-
-		daemonWaitCtx, cancelWait := context.WithTimeout(ctx, 10*time.Second)
-		defer cancelWait()
-
-		daemonConn := cosmosClient.QueryClient()
-		if err := waitForService(daemonWaitCtx, daemonConn); err != nil {
-			panic(fmt.Errorf("failed to wait for cosmos client connection: %w", err))
+		if len(cosmosClients) == 0 {
+			log.Fatalln("no cosmos clients initialized")
 		}
 
 		var storkEnabled bool
@@ -253,9 +249,7 @@ func oracleCmd(cmd *cli.Cmd) {
 
 		svc, err := oracle.NewService(
 			ctx,
-			cosmosClient,
-			exchangetypes.NewQueryClient(daemonConn),
-			oracletypes.NewQueryClient(daemonConn),
+			cosmosClients,
 			feedConfigs,
 			storkFetcher,
 		)
@@ -304,4 +298,53 @@ func oracleCmd(cmd *cli.Cmd) {
 
 		closer.Hold()
 	}
+}
+
+func NewCosmosClient(ctx context.Context, senderAddress cosmtypes.AccAddress, cosmosKeyring keyring.Keyring, network common.Network, cosmosConfig *CosmosConfig) (chainclient.ChainClient, error) {
+	if cosmosConfig != nil {
+		if cosmosConfig.tendermintRPC != "" {
+			network.TmEndpoint = cosmosConfig.tendermintRPC
+		}
+		if cosmosConfig.cosmosGRPC != "" {
+			network.ChainGrpcEndpoint = cosmosConfig.cosmosGRPC
+		}
+		if cosmosConfig.cosmosStreamGRPC != "" {
+			network.ChainStreamGrpcEndpoint = cosmosConfig.cosmosStreamGRPC
+		}
+	}
+
+	clientCtx, err := chainclient.NewClientContext(network.ChainId, senderAddress.String(), cosmosKeyring)
+	if err != nil {
+		return nil, err
+	}
+
+	tmRPC, err := rpchttp.New(network.TmEndpoint, "/websocket")
+	if err != nil {
+		return nil, err
+	}
+
+	clientCtx = clientCtx.WithNodeURI(network.TmEndpoint).WithClient(tmRPC)
+	txFactory := chainclient.NewTxFactory(clientCtx)
+	txFactory = txFactory.WithGasAdjustment(cosmosConfig.cosmosGasAdjust)
+	txFactory = txFactory.WithGasPrices(cosmosConfig.cosmosGasPrices)
+
+	cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionTxFactory(&txFactory))
+	if err != nil {
+		return nil, err
+	}
+	closer.Bind(func() {
+		cosmosClient.Close()
+	})
+
+	log.Infoln("waiting for GRPC services")
+
+	daemonWaitCtx, cancelWait := context.WithTimeout(ctx, 10*time.Second)
+	defer cancelWait()
+
+	daemonConn := cosmosClient.QueryClient()
+	if err := waitForService(daemonWaitCtx, daemonConn); err != nil {
+		return nil, fmt.Errorf("failed to wait for cosmos client connection: %w", err)
+	}
+
+	return cosmosClient, err
 }
