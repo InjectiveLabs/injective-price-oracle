@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -337,14 +336,6 @@ func NewCosmosClient(ctx context.Context, senderAddress cosmtypes.AccAddress, co
 	})
 
 	log.Infoln("waiting for GRPC services")
-
-	daemonWaitCtx, cancelWait := context.WithTimeout(ctx, 10*time.Second)
-	defer cancelWait()
-
-	daemonConn := cosmosClient.QueryClient()
-	if err := waitForService(daemonWaitCtx, daemonConn); err != nil {
-		return nil, fmt.Errorf("failed to wait for cosmos client connection: %w", err)
-	}
 
 	return cosmosClient, err
 }
