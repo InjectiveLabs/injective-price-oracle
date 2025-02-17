@@ -122,7 +122,7 @@ func waitForService(ctx context.Context, conn *grpc.ClientConn) error {
 		default:
 			state := conn.GetState()
 
-			if state != connectivity.Ready {
+			if state != connectivity.Ready && state != connectivity.Idle {
 				time.Sleep(time.Second)
 				continue
 			}
