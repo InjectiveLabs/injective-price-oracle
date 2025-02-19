@@ -168,7 +168,8 @@ func oracleCmd(cmd *cli.Cmd) {
 					cosmosGasAdjust:  cosmosGasAdjust,
 				})
 				if err != nil {
-					log.WithError(err).Fatalln("failed to initialize cosmos client")
+					log.WithError(err).Warningln("failed to initialize cosmos client")
+					continue
 				}
 
 				cosmosClients = append(cosmosClients, cosmosClient)
