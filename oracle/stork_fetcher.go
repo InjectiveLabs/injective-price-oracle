@@ -159,6 +159,18 @@ func (f *storkFetcher) startReadingMessages() error {
 				continue
 			}
 
+			now := time.Now().UTC()
+
+			for _, priceData := range data {
+				ts := time.Unix(0, priceData.Timestamp)
+				latency := now.Sub(ts) / time.Millisecond
+
+				metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
+					s.Timing("feed_provider.stork.price_receive.latency", latency, tagSpec, 1)
+					s.Count("feed_provider.stork.price_receive.count", int64(len(priceData.SignedPrices)), tagSpec, 1)
+				}, f.svcTags)
+			}
+
 			// Extract asset pairs from the message
 			assetIds := make([]string, 0)
 			for key := range data {
@@ -187,6 +199,10 @@ func (f *storkFetcher) startReadingMessages() error {
 				f.latestPairs[key] = v
 			}
 			f.mu.Unlock()
+
+			metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
+				s.Count("feed_provider.stork.latest_pairs_update.count", 1, tagSpec, 1)
+			}, f.svcTags)
 
 		default:
 			metrics.ReportFuncError(f.svcTags)
