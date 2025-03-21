@@ -4,12 +4,16 @@ on:
     tags:
       - v**
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   ECR_ENABLED: true
   ECR_REPO: public.ecr.aws/l9h3g6c6/injective-price-oracle
   GHCR_ENABLED: false
   GHCR_REPO: ghcr.io/injectivelabs/injective-price-oracle
-
+  AWS_REGION: us-east-1
 jobs:
   multi-release:
     runs-on: ubuntu-latest
@@ -30,15 +34,17 @@ jobs:
         if: env.GHCR_ENABLED == 'true'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Login to Public ECR
-        if: env.ECR_ENABLED == 'true'
-        uses: docker/login-action@v2
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          registry: public.ecr.aws
-          username: ${{ secrets.AWS_KEY }}
-          password: ${{ secrets.AWS_SECRET }}
-        env:
-          AWS_REGION: us-east-1
+          role-to-assume: arn:aws:iam::981432137740:role/injective-price-oracle
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+        
+      - name: Login to Amazon ECR Public
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
 
       - name: Build
         run: |
