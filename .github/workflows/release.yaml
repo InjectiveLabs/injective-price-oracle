@@ -13,7 +13,7 @@ env:
   ECR_REPO: public.ecr.aws/l9h3g6c6/injective-price-oracle
   GHCR_ENABLED: false
   GHCR_REPO: ghcr.io/injectivelabs/injective-price-oracle
-
+  AWS_REGION: us-east-1
 jobs:
   multi-release:
     runs-on: ubuntu-latest
