@@ -28,7 +28,7 @@ install-ubuntu:
 		-ldflags $(VERSION_FLAGS) \
 		./cmd/...
 
-.PHONY: install image push test gen
+.PHONY: install install-ubuntu image push test gen
 
 test:
 	# go clean -testcache
