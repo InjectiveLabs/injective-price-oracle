@@ -23,6 +23,11 @@ install:
 		-ldflags $(VERSION_FLAGS) \
 		./cmd/...
 
+install-ubuntu:
+	go install \
+		-ldflags $(VERSION_FLAGS) \
+		./cmd/...
+
 .PHONY: install image push test gen
 
 test:
