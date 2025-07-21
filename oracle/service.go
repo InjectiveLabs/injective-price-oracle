@@ -48,7 +48,7 @@ type FeedConfig struct {
 type oracleSvc struct {
 	pricePullers        map[string]PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
-	cosmosClients       []chainclient.ChainClientV2
+	cosmosClients       []chainclient.ChainClient
 	exchangeQueryClient exchangetypes.QueryClient
 	oracleQueryClient   oracletypes.QueryClient
 	config              *StorkConfig
@@ -139,7 +139,7 @@ func (s *oracleSvc) getEnabledFeeds(cosmosClient chainclient.ChainClient) map[st
 
 func NewService(
 	_ context.Context,
-	cosmosClients []chainclient.ChainClientV2,
+	cosmosClients []chainclient.ChainClient,
 	feedConfigs map[string]*FeedConfig,
 	storkFetcher StorkFetcher,
 ) (Service, error) {
@@ -268,7 +268,7 @@ const (
 
 var pullIntervalChain = 500 * time.Millisecond
 
-func composePriceFeedMsgs(cosmosClient chainclient.ChainClientV2, priceBatch []*PriceData) (results []cosmtypes.Msg) {
+func composePriceFeedMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (results []cosmtypes.Msg) {
 	msg := &oracletypes.MsgRelayPriceFeedPrice{
 		Sender: cosmosClient.FromAddress().String(),
 	}
@@ -290,7 +290,7 @@ func composePriceFeedMsgs(cosmosClient chainclient.ChainClientV2, priceBatch []*
 	return nil
 }
 
-func composeProviderFeedMsgs(cosmosClient chainclient.ChainClientV2, priceBatch []*PriceData) (result []cosmtypes.Msg) {
+func composeProviderFeedMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
 	if len(priceBatch) == 0 {
 		return nil
 	}
@@ -321,7 +321,7 @@ func composeProviderFeedMsgs(cosmosClient chainclient.ChainClientV2, priceBatch 
 	return result
 }
 
-func composeStorkOracleMsgs(cosmosClient chainclient.ChainClientV2, priceBatch []*PriceData) (result []cosmtypes.Msg) {
+func composeStorkOracleMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
 	if len(priceBatch) == 0 {
 		return nil
 	}
@@ -351,7 +351,7 @@ func composeStorkOracleMsgs(cosmosClient chainclient.ChainClientV2, priceBatch [
 	return result
 }
 
-func composeMsgs(cosmoClient chainclient.ChainClientV2, priceBatch []*PriceData) (result []cosmtypes.Msg) {
+func composeMsgs(cosmoClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
 	result = append(result, composePriceFeedMsgs(cosmoClient, priceBatch)...)
 	result = append(result, composeProviderFeedMsgs(cosmoClient, priceBatch)...)
 	result = append(result, composeStorkOracleMsgs(cosmoClient, priceBatch)...)
@@ -451,7 +451,7 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan *PriceData
 
 func (s *oracleSvc) broadcastToClient(
 	ctx context.Context,
-	cosmosClient chainclient.ChainClientV2,
+	cosmosClient chainclient.ChainClient,
 	msgs []cosmtypes.Msg,
 	currentMeta map[string]int,
 	pullIntervalChain time.Duration,
@@ -462,7 +462,7 @@ func (s *oracleSvc) broadcastToClient(
 	requestCtx, cancelFn := context.WithTimeout(ctx, chainMaxTimeLimit)
 	defer cancelFn()
 
-	txResp, err := cosmosClient.SyncBroadcastMsg(requestCtx, &pullIntervalChain, maxRetries, msgs...)
+	txResp, err := cosmosClient.SyncBroadcastMsgWithContext(requestCtx, &pullIntervalChain, maxRetries, msgs...)
 	if err != nil {
 		metrics.ReportFuncError(s.svcTags)
 		batchLog.WithError(err).WithField("client", cosmosClient.ClientContext().From).
