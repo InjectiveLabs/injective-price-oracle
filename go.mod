@@ -56,7 +56,6 @@ require (
 	github.com/DataDog/sketches-go v1.4.2 // indirect
 	github.com/DataDog/zstd v1.5.6 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/alexcesaro/statsd v2.0.0+incompatible // indirect
 	github.com/aws/aws-sdk-go v1.44.327 // indirect
@@ -94,8 +93,8 @@ require (
 	github.com/cosmos/ibc-go/v8 v8.6.1 // indirect
 	github.com/cosmos/ics23/go v0.11.0 // indirect
 	github.com/cosmos/ledger-cosmos-go v0.14.0 // indirect
+	github.com/crate-crypto/go-eth-kzg v1.3.0 // indirect
 	github.com/crate-crypto/go-ipa v0.0.0-20240724233137-53bbb0ceb27a // indirect
-	github.com/crate-crypto/go-kzg-4844 v1.1.0 // indirect
 	github.com/danieljoos/wincred v1.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set/v2 v2.8.0 // indirect
@@ -108,7 +107,7 @@ require (
 	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
 	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/emicklei/dot v1.6.2 // indirect
-	github.com/ethereum/c-kzg-4844 v1.0.0 // indirect
+	github.com/ethereum/c-kzg-4844/v2 v2.1.0 // indirect
 	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -208,6 +207,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zondax/hid v0.9.2 // indirect
 	github.com/zondax/ledger-go v0.14.3 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
@@ -241,24 +241,24 @@ require (
 )
 
 replace (
-	cosmossdk.io/api => github.com/InjectiveLabs/cosmos-sdk/api v0.50.13-evm-comet1-inj.2
-	cosmossdk.io/client/v2 => github.com/InjectiveLabs/cosmos-sdk/client/v2 v2.0.0-evm-comet1-inj.2
-	cosmossdk.io/core => github.com/InjectiveLabs/cosmos-sdk/core v0.50.13-evm-comet1-inj.2
-	cosmossdk.io/store => github.com/InjectiveLabs/cosmos-sdk/store v0.50.13-evm-comet1-inj.2
-	cosmossdk.io/x/circuit => github.com/InjectiveLabs/cosmos-sdk/x/circuit v0.50.13-evm-comet1-inj.2
-	cosmossdk.io/x/evidence => github.com/InjectiveLabs/cosmos-sdk/x/evidence v0.50.13-evm-comet1-inj.2
-	cosmossdk.io/x/feegrant => github.com/InjectiveLabs/cosmos-sdk/x/feegrant v0.50.13-evm-comet1-inj.2
-	cosmossdk.io/x/nft => github.com/InjectiveLabs/cosmos-sdk/x/nft v0.50.13-evm-comet1-inj.2
-	cosmossdk.io/x/tx => github.com/InjectiveLabs/cosmos-sdk/x/tx v0.50.13-evm-comet1-inj.2
-	cosmossdk.io/x/upgrade => github.com/InjectiveLabs/cosmos-sdk/x/upgrade v0.50.13-evm-comet1-inj.2
+	cosmossdk.io/api => github.com/InjectiveLabs/cosmos-sdk/api v0.50.13-evm-comet1-inj.3
+	cosmossdk.io/client/v2 => github.com/InjectiveLabs/cosmos-sdk/client/v2 v2.0.0-evm-comet1-inj.3
+	cosmossdk.io/core => github.com/InjectiveLabs/cosmos-sdk/core v0.50.13-evm-comet1-inj.3
+	cosmossdk.io/store => github.com/InjectiveLabs/cosmos-sdk/store v0.50.13-evm-comet1-inj.3
+	cosmossdk.io/x/circuit => github.com/InjectiveLabs/cosmos-sdk/x/circuit v0.50.13-evm-comet1-inj.3
+	cosmossdk.io/x/evidence => github.com/InjectiveLabs/cosmos-sdk/x/evidence v0.50.13-evm-comet1-inj.3
+	cosmossdk.io/x/feegrant => github.com/InjectiveLabs/cosmos-sdk/x/feegrant v0.50.13-evm-comet1-inj.3
+	cosmossdk.io/x/nft => github.com/InjectiveLabs/cosmos-sdk/x/nft v0.50.13-evm-comet1-inj.3
+	cosmossdk.io/x/tx => github.com/InjectiveLabs/cosmos-sdk/x/tx v0.50.13-evm-comet1-inj.3
+	cosmossdk.io/x/upgrade => github.com/InjectiveLabs/cosmos-sdk/x/upgrade v0.50.13-evm-comet1-inj.3
 
 	github.com/CosmWasm/wasmd => github.com/InjectiveLabs/wasmd v0.53.2-evm-comet1-inj
 	github.com/bandprotocol/bandchain-packet => github.com/InjectiveLabs/bandchain-packet v0.0.4-0.20230327115226-35199d4659d5
 	github.com/cometbft/cometbft => github.com/InjectiveLabs/cometbft v1.0.1-inj
 	github.com/cometbft/cometbft/api => github.com/injectivelabs/cometbft/api v1.0.1-0.20250315062455-e9e4c8a0ecb9
-	github.com/cosmos/cosmos-sdk => github.com/InjectiveLabs/cosmos-sdk v0.50.13-evm-comet1-inj.2
+	github.com/cosmos/cosmos-sdk => github.com/InjectiveLabs/cosmos-sdk v0.50.13-evm-comet1-inj.3
 	github.com/cosmos/ibc-go/v8 => github.com/InjectiveLabs/ibc-go/v8 v8.7.0-evm-comet1-inj
 
-	github.com/ethereum/go-ethereum => github.com/InjectiveLabs/go-ethereum v1.14.11-inj
+	github.com/ethereum/go-ethereum => github.com/InjectiveLabs/go-ethereum v1.15.11-inj
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
