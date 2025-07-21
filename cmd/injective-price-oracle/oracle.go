@@ -289,7 +289,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		}()
 
 		go func() {
-			if err := svc.Start(); err != nil {
+			if err := svc.Start(ctx); err != nil {
 				log.Errorln(err)
 
 				// signal there that the app failed

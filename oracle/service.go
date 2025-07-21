@@ -21,7 +21,7 @@ import (
 )
 
 type Service interface {
-	Start() error
+	Start(ctx context.Context) error
 	Close()
 }
 
@@ -186,7 +186,7 @@ func NewService(
 	return svc, nil
 }
 
-func (s *oracleSvc) Start() (err error) {
+func (s *oracleSvc) Start(ctx context.Context) (err error) {
 	defer s.panicRecover(&err)
 
 	if len(s.pricePullers) > 0 {
@@ -203,7 +203,7 @@ func (s *oracleSvc) Start() (err error) {
 			}
 		}
 
-		s.commitSetPrices(dataC)
+		s.commitSetPrices(ctx, dataC)
 	}
 
 	return
@@ -358,7 +358,7 @@ func composeMsgs(cosmoClient chainclient.ChainClientV2, priceBatch []*PriceData)
 	return result
 }
 
-func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
+func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan *PriceData) {
 	metrics.ReportFuncCall(s.svcTags)
 	doneFn := metrics.ReportFuncTiming(s.svcTags)
 	defer doneFn()
@@ -403,7 +403,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 				return
 			}
 
-			if success := s.broadcastToClient(cosmosClient, msgs, currentMeta, pullIntervalChain, maxRetries, batchLog); success {
+			if success := s.broadcastToClient(ctx, cosmosClient, msgs, currentMeta, pullIntervalChain, maxRetries, batchLog); success {
 				return
 			}
 		}
@@ -450,6 +450,7 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 }
 
 func (s *oracleSvc) broadcastToClient(
+	ctx context.Context,
 	cosmosClient chainclient.ChainClientV2,
 	msgs []cosmtypes.Msg,
 	currentMeta map[string]int,
@@ -458,10 +459,10 @@ func (s *oracleSvc) broadcastToClient(
 	batchLog log.Logger,
 ) bool {
 	ts := time.Now()
-	ctx, cancelFn := context.WithTimeout(context.Background(), chainMaxTimeLimit)
+	requestCtx, cancelFn := context.WithTimeout(ctx, chainMaxTimeLimit)
 	defer cancelFn()
 
-	txResp, err := cosmosClient.SyncBroadcastMsg(ctx, &pullIntervalChain, maxRetries, msgs...)
+	txResp, err := cosmosClient.SyncBroadcastMsg(requestCtx, &pullIntervalChain, maxRetries, msgs...)
 	if err != nil {
 		metrics.ReportFuncError(s.svcTags)
 		batchLog.WithError(err).WithField("client", cosmosClient.ClientContext().From).
