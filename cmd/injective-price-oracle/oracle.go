@@ -156,7 +156,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		}
 
 		log.Infoln("using Injective Sender", senderAddress.String())
-		cosmosClients := make([]chainclient.ChainClient, 0)
+		cosmosClients := make([]chainclient.ChainClientV2, 0)
 
 		if cosmosOverrideNetwork {
 			for i := 0; i < len(tendermintRPCs); i++ {
@@ -301,7 +301,7 @@ func oracleCmd(cmd *cli.Cmd) {
 	}
 }
 
-func NewCosmosClient(ctx context.Context, senderAddress cosmtypes.AccAddress, cosmosKeyring keyring.Keyring, network common.Network, cosmosConfig *CosmosConfig) (chainclient.ChainClient, error) {
+func NewCosmosClient(ctx context.Context, senderAddress cosmtypes.AccAddress, cosmosKeyring keyring.Keyring, network common.Network, cosmosConfig *CosmosConfig) (chainclient.ChainClientV2, error) {
 	if cosmosConfig != nil {
 		if cosmosConfig.tendermintRPC != "" {
 			network.TmEndpoint = cosmosConfig.tendermintRPC
@@ -329,7 +329,7 @@ func NewCosmosClient(ctx context.Context, senderAddress cosmtypes.AccAddress, co
 	txFactory = txFactory.WithGasAdjustment(cosmosConfig.cosmosGasAdjust)
 	txFactory = txFactory.WithGasPrices(cosmosConfig.cosmosGasPrices)
 
-	cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionTxFactory(&txFactory))
+	cosmosClient, err := chainclient.NewChainClientV2(clientCtx, network, common.OptionTxFactory(&txFactory))
 	if err != nil {
 		return nil, err
 	}

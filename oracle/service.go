@@ -15,7 +15,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/InjectiveLabs/metrics"
-	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types"
+	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types/v2"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
 )
@@ -48,7 +48,7 @@ type FeedConfig struct {
 type oracleSvc struct {
 	pricePullers        map[string]PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
-	cosmosClients       []chainclient.ChainClient
+	cosmosClients       []chainclient.ChainClientV2
 	exchangeQueryClient exchangetypes.QueryClient
 	oracleQueryClient   oracletypes.QueryClient
 	config              *StorkConfig
@@ -139,7 +139,7 @@ func (s *oracleSvc) getEnabledFeeds(cosmosClient chainclient.ChainClient) map[st
 
 func NewService(
 	_ context.Context,
-	cosmosClients []chainclient.ChainClient,
+	cosmosClients []chainclient.ChainClientV2,
 	feedConfigs map[string]*FeedConfig,
 	storkFetcher StorkFetcher,
 ) (Service, error) {
@@ -239,7 +239,7 @@ func (s *oracleSvc) processSetPriceFeed(ticker string, pricePuller PricePuller, 
 				}
 
 				if err != nil {
-					metrics.ReportFuncError(s.svcTags)
+					metrics.ReportFuncCallAndTimingWithErr(s.svcTags)(&err)
 					feedLogger.WithFields(log.Fields{
 						"symbol":  symbol,
 						"retries": maxRetriesPerInterval,
@@ -262,9 +262,13 @@ func (s *oracleSvc) processSetPriceFeed(ticker string, pricePuller PricePuller, 
 const (
 	commitPriceBatchTimeLimit = 5 * time.Second
 	commitPriceBatchSizeLimit = 100
+	maxRetries                = 6
+	chainMaxTimeLimit         = 5 * time.Second
 )
 
-func composePriceFeedMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (results []cosmtypes.Msg) {
+var pullIntervalChain = 500 * time.Millisecond
+
+func composePriceFeedMsgs(cosmosClient chainclient.ChainClientV2, priceBatch []*PriceData) (results []cosmtypes.Msg) {
 	msg := &oracletypes.MsgRelayPriceFeedPrice{
 		Sender: cosmosClient.FromAddress().String(),
 	}
@@ -286,7 +290,7 @@ func composePriceFeedMsgs(cosmosClient chainclient.ChainClient, priceBatch []*Pr
 	return nil
 }
 
-func composeProviderFeedMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
+func composeProviderFeedMsgs(cosmosClient chainclient.ChainClientV2, priceBatch []*PriceData) (result []cosmtypes.Msg) {
 	if len(priceBatch) == 0 {
 		return nil
 	}
@@ -317,7 +321,7 @@ func composeProviderFeedMsgs(cosmosClient chainclient.ChainClient, priceBatch []
 	return result
 }
 
-func composeStorkOracleMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
+func composeStorkOracleMsgs(cosmosClient chainclient.ChainClientV2, priceBatch []*PriceData) (result []cosmtypes.Msg) {
 	if len(priceBatch) == 0 {
 		return nil
 	}
@@ -347,7 +351,7 @@ func composeStorkOracleMsgs(cosmosClient chainclient.ChainClient, priceBatch []*
 	return result
 }
 
-func composeMsgs(cosmoClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
+func composeMsgs(cosmoClient chainclient.ChainClientV2, priceBatch []*PriceData) (result []cosmtypes.Msg) {
 	result = append(result, composePriceFeedMsgs(cosmoClient, priceBatch)...)
 	result = append(result, composeProviderFeedMsgs(cosmoClient, priceBatch)...)
 	result = append(result, composeStorkOracleMsgs(cosmoClient, priceBatch)...)
@@ -388,45 +392,18 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			priceBatch = append(priceBatch, msg)
 		}
 
-		ts := time.Now()
 		// Iterate over all cosmos clients and try to send the batch
 		// if one of the clients is successful, we return
 		// otherwise, we continue to the next client
 		for _, cosmosClient := range s.cosmosClients {
 			msgs := composeMsgs(cosmosClient, priceBatch)
 			if len(msgs) == 0 {
-				batchLog.Debugf("pipeline composed no messages, so do nothing")
+				batchLog.WithField("client", cosmosClient.ClientContext().From).
+					Debugf("pipeline composed no messages for this client")
 				return
 			}
 
-			txResp, err := cosmosClient.SyncBroadcastMsg(msgs...)
-			if err != nil {
-				metrics.ReportFuncError(s.svcTags)
-				batchLog.WithError(err).Errorln("failed to SyncBroadcastMsg")
-				continue
-			}
-
-			if txResp.TxResponse != nil {
-				if txResp.TxResponse.Code != 0 {
-					metrics.ReportFuncError(s.svcTags)
-					batchLog.WithFields(log.Fields{
-						"cosmosClient": cosmosClient.ClientContext().From,
-						"hash":         txResp.TxResponse.TxHash,
-						"err_code":     txResp.TxResponse.Code,
-					}).Errorf("set price Tx error: %s", txResp.String())
-					continue
-
-				}
-				for oracleType, count := range currentMeta {
-					metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
-						s.Count(fmt.Sprintf("price_oracle.%s.submitted.price.size", strings.ToLower(oracleType)), int64(count), tagSpec, 1)
-					}, s.svcTags)
-				}
-				batchLog.
-					WithField("cosmosClient", cosmosClient.ClientContext().From).
-					WithField("height", txResp.TxResponse.Height).
-					WithField("hash", txResp.TxResponse.TxHash).
-					Infoln("sent Tx in", time.Since(ts))
+			if success := s.broadcastToClient(cosmosClient, msgs, currentMeta, pullIntervalChain, maxRetries, batchLog); success {
 				return
 			}
 		}
@@ -470,6 +447,55 @@ func (s *oracleSvc) commitSetPrices(dataC <-chan *PriceData) {
 			submitBatch(prevBatch, prevMeta, true)
 		}
 	}
+}
+
+func (s *oracleSvc) broadcastToClient(
+	cosmosClient chainclient.ChainClientV2,
+	msgs []cosmtypes.Msg,
+	currentMeta map[string]int,
+	pullIntervalChain time.Duration,
+	maxRetries uint32,
+	batchLog log.Logger,
+) bool {
+	ts := time.Now()
+	ctx, cancelFn := context.WithTimeout(context.Background(), chainMaxTimeLimit)
+	defer cancelFn()
+
+	txResp, err := cosmosClient.SyncBroadcastMsg(ctx, &pullIntervalChain, maxRetries, msgs...)
+	if err != nil {
+		metrics.ReportFuncError(s.svcTags)
+		batchLog.WithError(err).WithField("client", cosmosClient.ClientContext().From).
+			Errorln("failed to SyncBroadcastMsg")
+		return false
+	}
+
+	if txResp.TxResponse != nil {
+		if txResp.TxResponse.Code != 0 {
+			metrics.ReportFuncError(s.svcTags)
+			batchLog.WithFields(log.Fields{
+				"cosmosClient": cosmosClient.ClientContext().From,
+				"hash":         txResp.TxResponse.TxHash,
+				"err_code":     txResp.TxResponse.Code,
+			}).Errorf("set price Tx error: %s", txResp.String())
+			return false
+		}
+
+		for oracleType, count := range currentMeta {
+			metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
+				s.Count(fmt.Sprintf("price_oracle.%s.submitted.price.size", strings.ToLower(oracleType)), int64(count), tagSpec, 1)
+			}, s.svcTags)
+		}
+
+		batchLog.WithFields(log.Fields{
+			"cosmosClient": cosmosClient.ClientContext().From,
+			"height":       txResp.TxResponse.Height,
+			"hash":         txResp.TxResponse.TxHash,
+			"duration":     time.Since(ts),
+		}).Infoln("sent Tx successfully")
+		return true
+	}
+
+	return false
 }
 
 func (s *oracleSvc) panicRecover(err *error) {
