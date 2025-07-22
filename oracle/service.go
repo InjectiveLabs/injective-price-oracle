@@ -492,7 +492,7 @@ func (s *oracleSvc) broadcastToClient(
 			"height":       txResp.TxResponse.Height,
 			"hash":         txResp.TxResponse.TxHash,
 			"duration":     time.Since(ts),
-		}).Infoln("sent Tx successfully")
+		}).Infoln("sent Tx successfully in ", time.Since(ts))
 		return true
 	}
 
