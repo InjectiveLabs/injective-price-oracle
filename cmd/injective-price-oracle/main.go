@@ -10,13 +10,23 @@ import (
 	"github.com/InjectiveLabs/injective-price-oracle/version"
 )
 
-var app = cli.App("injective-price-oracle", "Injective's Oracle with dynamic price feeds.")
+var (
+	app         = cli.App("injective-price-oracle", "Injective's Oracle with dynamic price feeds.")
+	hostname, _ = os.Hostname()
+)
 
 var (
 	envName        *string
 	appLogLevel    *string
 	svcWaitTimeout *string
 )
+
+func panicIf(err error, msg ...interface{}) {
+	if err != nil {
+		log.WithError(err).Errorln(msg...)
+		panic(err)
+	}
+}
 
 func main() {
 	readEnv()
@@ -31,6 +41,7 @@ func main() {
 	}
 
 	app.Command("start", "Starts the oracle main loop.", oracleCmd)
+	app.Command("api", "Starts the oracle API server.", apiCmd)
 	app.Command("probe", "Validates target TOML file spec and runs it once, printing the result.", probeCmd)
 	app.Command("version", "Print the version information and exit.", versionCmd)
 

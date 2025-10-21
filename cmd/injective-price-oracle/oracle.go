@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/xlab/closer"
 
-	"github.com/InjectiveLabs/injective-price-oracle/oracle"
+	oracle2 "github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle"
 	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 )
 
@@ -113,7 +113,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		&statsdDisabled,
 	)
 
-	initStorkOracleWebSocket(
+	initStorkOracleWebSocketOptions(
 		cmd,
 		&websocketUrl,
 		&websocketHeader,
@@ -193,7 +193,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		var storkEnabled bool
 		storkMap := make(map[string]struct{})
 
-		feedConfigs := make(map[string]*oracle.FeedConfig)
+		feedConfigs := make(map[string]*oracle2.FeedConfig)
 		if len(*feedsDir) > 0 {
 			err := filepath.WalkDir(*feedsDir, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
@@ -210,7 +210,7 @@ func oracleCmd(cmd *cli.Cmd) {
 					return err
 				}
 
-				feedCfg, err := oracle.ParseDynamicFeedConfig(cfgBody)
+				feedCfg, err := oracle2.ParseDynamicFeedConfig(cfgBody)
 				if err != nil {
 					log.WithError(err).WithFields(log.Fields{
 						"filename": d.Name(),
@@ -218,7 +218,7 @@ func oracleCmd(cmd *cli.Cmd) {
 					return nil
 				}
 
-				if feedCfg.ProviderName == oracle.FeedProviderStork.String() {
+				if feedCfg.ProviderName == oracle2.FeedProviderStork.String() {
 					storkEnabled = true
 					storkMap[feedCfg.Ticker] = struct{}{}
 				}
@@ -237,7 +237,7 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Infof("found %d dynamic feed configs", len(feedConfigs))
 		}
 
-		var storkFetcher oracle.StorkFetcher
+		var storkFetcher oracle2.StorkFetcher
 
 		if storkEnabled {
 			var storkTickers []string
@@ -245,10 +245,10 @@ func oracleCmd(cmd *cli.Cmd) {
 				storkTickers = append(storkTickers, ticker)
 			}
 
-			storkFetcher = oracle.NewStorkFetcher(*websocketSubscribeMessage, storkTickers)
+			storkFetcher = oracle2.NewStorkFetcher(*websocketSubscribeMessage, storkTickers)
 		}
 
-		svc, err := oracle.NewService(
+		svc, err := oracle2.NewService(
 			ctx,
 			cosmosClients,
 			feedConfigs,
@@ -275,7 +275,7 @@ func oracleCmd(cmd *cli.Cmd) {
 				}
 
 				connectIn = 5 * time.Second
-				conn, err := pipeline.ConnectWebSocket(ctx, *websocketUrl, *websocketHeader, oracle.MaxRetriesReConnectWebSocket)
+				conn, err := pipeline.ConnectWebSocket(ctx, *websocketUrl, *websocketHeader, oracle2.MaxRetriesReConnectWebSocket)
 				if err != nil {
 					log.WithError(err).Errorln("failed to connect to WebSocket")
 					continue

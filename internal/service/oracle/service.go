@@ -80,8 +80,6 @@ const (
 	FeedProviderDynamic FeedProvider = "_"
 	FeedProviderBinance FeedProvider = "binance"
 	FeedProviderStork   FeedProvider = "stork"
-
-	// TODO: add your native implementations here
 )
 
 type PriceFeedConfig struct {
