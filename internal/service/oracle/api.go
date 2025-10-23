@@ -55,7 +55,7 @@ func (s *apiSvc) Probe(ctx context.Context, payload *injectivepriceoracleapi.Pro
 
 	pricePuller, err := NewDynamicPriceFeed(feedCfg)
 	if err != nil {
-		log.WithError(err).Fatalln("failed to init new dynamic price feed")
+		log.WithError(err).Errorln("failed to init new dynamic price feed")
 		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("failed to init new dynamic price feed: %w", err))
 	}
 
