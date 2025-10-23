@@ -28,6 +28,7 @@ func (s *Service) GetStatus(_ context.Context) (res *injectivehealthapi.HealthSt
 	return &injectivehealthapi.HealthStatusResponse{
 		Errmsg: nil,
 		Data:   &injectivehealthapi.HealthStatus{},
+		S:      "ok",
 		Status: "ok",
 	}, nil
 }

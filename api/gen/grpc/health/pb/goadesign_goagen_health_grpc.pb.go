@@ -4,7 +4,7 @@
 // - protoc             v5.29.2
 // source: goadesign_goagen_health.proto
 
-package api_v1pb
+package injective_price_oracle_api_v1pb
 
 import (
 	context "context"
@@ -36,7 +36,7 @@ func NewHealthClient(cc grpc.ClientConnInterface) HealthClient {
 
 func (c *healthClient) GetStatus(ctx context.Context, in *GetStatusRequest, opts ...grpc.CallOption) (*GetStatusResponse, error) {
 	out := new(GetStatusResponse)
-	err := c.cc.Invoke(ctx, "/api.v1.Health/GetStatus", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/injective.price.oracle.api.v1.Health/GetStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func _Health_GetStatus_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/api.v1.Health/GetStatus",
+		FullMethod: "/injective.price.oracle.api.v1.Health/GetStatus",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HealthServer).GetStatus(ctx, req.(*GetStatusRequest))
@@ -94,7 +94,7 @@ func _Health_GetStatus_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Health_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "api.v1.Health",
+	ServiceName: "injective.price.oracle.api.v1.Health",
 	HandlerType: (*HealthServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

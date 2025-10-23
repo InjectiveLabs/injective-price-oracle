@@ -41,7 +41,7 @@ func (s *apiSvc) Probe(ctx context.Context, payload *injectivepriceoracleapi.Pro
 	feedCfg, err := ParseDynamicFeedConfig(payload.Content)
 	if err != nil {
 		log.WithError(err).WithFields(log.Fields{
-			"payload": payload.Content,
+			"payload": len(payload.Content),
 		}).Errorln("failed to parse dynamic feed config")
 		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("failed to parse dynamic feed config: %w", err))
 	}
@@ -69,6 +69,10 @@ func (s *apiSvc) Probe(ctx context.Context, payload *injectivepriceoracleapi.Pro
 	if err != nil {
 		pullerLogger.WithError(err).Errorln("failed to pull price")
 		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("failed to pull price: %w", err))
+	}
+
+	if answer == nil {
+		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("pull price returned empty result"))
 	}
 
 	return &injectivepriceoracleapi.ProbeResponse{

@@ -10,10 +10,7 @@ import (
 	"github.com/InjectiveLabs/injective-price-oracle/version"
 )
 
-var (
-	app         = cli.App("injective-price-oracle", "Injective's Oracle with dynamic price feeds.")
-	hostname, _ = os.Hostname()
-)
+var app = cli.App("injective-price-oracle", "Injective's Oracle with dynamic price feeds.")
 
 var (
 	envName        *string

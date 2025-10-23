@@ -1,5 +1,5 @@
 #install packages for build layer
-FROM golang:1.23.5-alpine AS builder
+FROM golang:1.24.5-alpine AS builder
 RUN apk add --no-cache git gcc make perl jq libc-dev linux-headers
 
 ADD https://github.com/CosmWasm/wasmvm/releases/download/v2.1.5/libwasmvm_muslc.aarch64.a /lib/libwasmvm_muslc.aarch64.a

@@ -7,9 +7,9 @@
 
 syntax = "proto3";
 
-package api.v1;
+package injective.price.oracle.api.v1;
 
-option go_package = "/api.v1pb";
+option go_package = "/injective.price.oracle.api.v1pb";
 
 // HealthAPI allows to check if backend data is up-to-date and reliable or not.
 service Health {
