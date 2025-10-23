@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"goa.design/goa/v3/security"
 
 	log "github.com/InjectiveLabs/suplog"
 
@@ -12,36 +13,50 @@ import (
 )
 
 type apiSvc struct {
+	APIKey string
 }
 
 type APIService interface {
+	APIKeyAuth(ctx context.Context, key string, schema *security.APIKeyScheme) (context.Context, error)
 	Probe(ctx context.Context, payload *injectivepriceoracleapi.ProbePayload) (res *injectivepriceoracleapi.ProbeResponse, err error)
 }
 
-func NewAPIService() APIService {
-	return &apiSvc{}
+func NewAPIService(APIKey string) APIService {
+	return &apiSvc{
+		APIKey: APIKey,
+	}
 }
 
+// APIKeyAuth verifies the API key sent by the client
+func (s *apiSvc) APIKeyAuth(ctx context.Context, key string, _ *security.APIKeyScheme) (context.Context, error) {
+	if s.APIKey != key {
+		return nil, injectivepriceoracleapi.MakeUnauthorized(fmt.Errorf("invalid API key"))
+	}
+
+	return ctx, nil
+}
+
+// Probe validates the dynamic feed config and attempts to pull price once
 func (s *apiSvc) Probe(ctx context.Context, payload *injectivepriceoracleapi.ProbePayload) (res *injectivepriceoracleapi.ProbeResponse, err error) {
 	feedCfg, err := ParseDynamicFeedConfig(payload.Content)
 	if err != nil {
 		log.WithError(err).WithFields(log.Fields{
 			"payload": payload.Content,
 		}).Errorln("failed to parse dynamic feed config")
-		return nil, fmt.Errorf("failed to parse dynamic feed config: %w", err)
+		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("failed to parse dynamic feed config: %w", err))
 	}
 
 	if err = validateFeedConfig(feedCfg); err != nil {
 		log.WithError(err).WithFields(log.Fields{
 			"feed_config": feedCfg,
 		}).Errorln("invalid feed config")
-		return nil, fmt.Errorf("invalid feed config: %w", err)
+		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("invalid feed config: %w", err))
 	}
 
 	pricePuller, err := NewDynamicPriceFeed(feedCfg)
 	if err != nil {
 		log.WithError(err).Fatalln("failed to init new dynamic price feed")
-		return nil, fmt.Errorf("failed to init new dynamic price feed: %w", err)
+		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("failed to init new dynamic price feed: %w", err))
 	}
 
 	pullerLogger := log.WithFields(log.Fields{
@@ -53,7 +68,7 @@ func (s *apiSvc) Probe(ctx context.Context, payload *injectivepriceoracleapi.Pro
 	answer, err := pricePuller.PullPrice(ctx)
 	if err != nil {
 		pullerLogger.WithError(err).Errorln("failed to pull price")
-		return nil, fmt.Errorf("failed to pull price: %w", err)
+		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("failed to pull price: %w", err))
 	}
 
 	return &injectivepriceoracleapi.ProbeResponse{

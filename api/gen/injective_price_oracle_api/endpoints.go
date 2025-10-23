@@ -11,6 +11,7 @@ import (
 	"context"
 
 	goa "goa.design/goa/v3/pkg"
+	"goa.design/goa/v3/security"
 )
 
 // Endpoints wraps the "Injective Price Oracle API" service endpoints.
@@ -21,8 +22,10 @@ type Endpoints struct {
 // NewEndpoints wraps the methods of the "Injective Price Oracle API" service
 // with endpoints.
 func NewEndpoints(s Service) *Endpoints {
+	// Casting service to Auther interface
+	a := s.(Auther)
 	return &Endpoints{
-		Probe: NewProbeEndpoint(s),
+		Probe: NewProbeEndpoint(s, a.APIKeyAuth),
 	}
 }
 
@@ -34,9 +37,23 @@ func (e *Endpoints) Use(m func(goa.Endpoint) goa.Endpoint) {
 
 // NewProbeEndpoint returns an endpoint function that calls the method "probe"
 // of service "Injective Price Oracle API".
-func NewProbeEndpoint(s Service) goa.Endpoint {
+func NewProbeEndpoint(s Service, authAPIKeyFn security.AuthAPIKeyFunc) goa.Endpoint {
 	return func(ctx context.Context, req interface{}) (interface{}, error) {
 		p := req.(*ProbePayload)
+		var err error
+		sc := security.APIKeyScheme{
+			Name:           "api_key",
+			Scopes:         []string{"api:read"},
+			RequiredScopes: []string{},
+		}
+		var key string
+		if p.Key != nil {
+			key = *p.Key
+		}
+		ctx, err = authAPIKeyFn(ctx, key, &sc)
+		if err != nil {
+			return nil, err
+		}
 		return s.Probe(ctx, p)
 	}
 }

@@ -62,6 +62,25 @@ type ProbeInternalResponseBody struct {
 	Fault bool `form:"fault" json:"fault" xml:"fault"`
 }
 
+// ProbeUnauthorizedResponseBody is the type of the "Injective Price Oracle
+// API" service "probe" endpoint HTTP response body for the "unauthorized"
+// error.
+type ProbeUnauthorizedResponseBody struct {
+	// Name is the name of this class of errors.
+	Name string `form:"name" json:"name" xml:"name"`
+	// ID is a unique identifier for this particular occurrence of the problem.
+	ID string `form:"id" json:"id" xml:"id"`
+	// Message is a human-readable explanation specific to this occurrence of the
+	// problem.
+	Message string `form:"message" json:"message" xml:"message"`
+	// Is the error temporary?
+	Temporary bool `form:"temporary" json:"temporary" xml:"temporary"`
+	// Is the error a timeout?
+	Timeout bool `form:"timeout" json:"timeout" xml:"timeout"`
+	// Is the error a server-side fault?
+	Fault bool `form:"fault" json:"fault" xml:"fault"`
+}
+
 // NewProbeResponseBody builds the HTTP response body from the result of the
 // "probe" endpoint of the "Injective Price Oracle API" service.
 func NewProbeResponseBody(res *injectivepriceoracleapi.ProbeResponse) *ProbeResponseBody {
@@ -99,12 +118,27 @@ func NewProbeInternalResponseBody(res *goa.ServiceError) *ProbeInternalResponseB
 	return body
 }
 
+// NewProbeUnauthorizedResponseBody builds the HTTP response body from the
+// result of the "probe" endpoint of the "Injective Price Oracle API" service.
+func NewProbeUnauthorizedResponseBody(res *goa.ServiceError) *ProbeUnauthorizedResponseBody {
+	body := &ProbeUnauthorizedResponseBody{
+		Name:      res.Name,
+		ID:        res.ID,
+		Message:   res.Message,
+		Temporary: res.Temporary,
+		Timeout:   res.Timeout,
+		Fault:     res.Fault,
+	}
+	return body
+}
+
 // NewProbePayload builds a Injective Price Oracle API service probe endpoint
 // payload.
-func NewProbePayload(body *ProbeRequestBody) *injectivepriceoracleapi.ProbePayload {
+func NewProbePayload(body *ProbeRequestBody, key *string) *injectivepriceoracleapi.ProbePayload {
 	v := &injectivepriceoracleapi.ProbePayload{
 		Content: body.Content,
 	}
+	v.Key = key
 
 	return v
 }

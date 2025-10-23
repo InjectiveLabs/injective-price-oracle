@@ -31,8 +31,8 @@ health get-status
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
 	return os.Args[0] + ` injective-price-oracle-api probe --body '{
-      "content": "Q29uc2VxdWF0dXIgZWEgdm9sdXB0YXRlbSBpbi4="
-   }'` + "\n" +
+      "content": "RmFjaWxpcyBvZmZpY2lpcy4="
+   }' --key "Atque omnis."` + "\n" +
 		os.Args[0] + ` health get-status` + "\n" +
 		""
 }
@@ -52,6 +52,7 @@ func ParseEndpoint(
 
 		injectivePriceOracleAPIProbeFlags    = flag.NewFlagSet("probe", flag.ExitOnError)
 		injectivePriceOracleAPIProbeBodyFlag = injectivePriceOracleAPIProbeFlags.String("body", "REQUIRED", "")
+		injectivePriceOracleAPIProbeKeyFlag  = injectivePriceOracleAPIProbeFlags.String("key", "", "")
 
 		healthFlags = flag.NewFlagSet("health", flag.ContinueOnError)
 
@@ -136,7 +137,7 @@ func ParseEndpoint(
 			switch epn {
 			case "probe":
 				endpoint = c.Probe(injectivePriceOracleAPIProbeEncoderFn)
-				data, err = injectivepriceoracleapic.BuildProbePayload(*injectivePriceOracleAPIProbeBodyFlag)
+				data, err = injectivepriceoracleapic.BuildProbePayload(*injectivePriceOracleAPIProbeBodyFlag, *injectivePriceOracleAPIProbeKeyFlag)
 			}
 		case "health":
 			c := healthc.NewClient(scheme, host, doer, enc, dec, restore)
@@ -169,15 +170,16 @@ Additional help:
 `, os.Args[0])
 }
 func injectivePriceOracleAPIProbeUsage() {
-	fmt.Fprintf(os.Stderr, `%[1]s [flags] injective-price-oracle-api probe -body JSON
+	fmt.Fprintf(os.Stderr, `%[1]s [flags] injective-price-oracle-api probe -body JSON -key STRING
 
 Validate TOML file
     -body JSON: 
+    -key STRING: 
 
 Example:
     %[1]s injective-price-oracle-api probe --body '{
-      "content": "Q29uc2VxdWF0dXIgZWEgdm9sdXB0YXRlbSBpbi4="
-   }'
+      "content": "RmFjaWxpcyBvZmZpY2lpcy4="
+   }' --key "Atque omnis."
 `, os.Args[0])
 }
 

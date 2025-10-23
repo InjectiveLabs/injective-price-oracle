@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	injectivepriceoracleapi "github.com/InjectiveLabs/injective-price-oracle/api/gen/injective_price_oracle_api"
 	goahttp "goa.design/goa/v3/http"
@@ -37,6 +38,13 @@ func DecodeProbeRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.D
 		if err := decoder(r).Decode(&payload); err != nil {
 			return nil, goa.DecodePayloadError(err.Error())
 		}
+		if payload.Key != nil {
+			if strings.Contains(*payload.Key, " ") {
+				// Remove authorization scheme prefix (e.g. "Bearer")
+				cred := strings.SplitN(*payload.Key, " ", 2)[1]
+				payload.Key = &cred
+			}
+		}
 
 		return payload, nil
 	}
@@ -56,6 +64,15 @@ func NewInjectivePriceOracleAPIProbeDecoder(mux goahttp.Muxer, injectivePriceOra
 			if err := injectivePriceOracleAPIProbeDecoderFn(mr, p); err != nil {
 				return err
 			}
+
+			var (
+				key *string
+			)
+			keyRaw := r.Header.Get("X-Api-Key")
+			if keyRaw != "" {
+				key = &keyRaw
+			}
+			(*p).Key = key
 			return nil
 		})
 	}
@@ -96,6 +113,19 @@ func EncodeProbeError(encoder func(context.Context, http.ResponseWriter) goahttp
 			}
 			w.Header().Set("goa-error", res.ErrorName())
 			w.WriteHeader(http.StatusInternalServerError)
+			return enc.Encode(body)
+		case "unauthorized":
+			var res *goa.ServiceError
+			errors.As(v, &res)
+			enc := encoder(ctx, w)
+			var body interface{}
+			if formatter != nil {
+				body = formatter(res)
+			} else {
+				body = NewProbeUnauthorizedResponseBody(res)
+			}
+			w.Header().Set("goa-error", res.ErrorName())
+			w.WriteHeader(http.StatusUnauthorized)
 			return enc.Encode(body)
 		default:
 			return encodeError(ctx, w, v)

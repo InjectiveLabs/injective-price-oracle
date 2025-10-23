@@ -45,6 +45,7 @@ func apiCmd(cmd *cli.Cmd) {
 
 		grpcWebListenAddress  *string
 		grpcWebRequestTimeout *string
+		apiKey                *string
 	)
 
 	initStatsdOptions(
@@ -61,6 +62,7 @@ func apiCmd(cmd *cli.Cmd) {
 		cmd,
 		&grpcWebListenAddress,
 		&grpcWebRequestTimeout,
+		&apiKey,
 	)
 
 	cmd.Action = func() {
@@ -83,7 +85,7 @@ func apiCmd(cmd *cli.Cmd) {
 		panicIf(err)
 		grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(TimeoutInterceptor(requestTimeout)))
 
-		apiSvc := oracle.NewAPIService()
+		apiSvc := oracle.NewAPIService(*apiKey)
 
 		// Initialize and register Health Service
 		healthSvc := health.NewHealthService(log.DefaultLogger, metrics.Tags{

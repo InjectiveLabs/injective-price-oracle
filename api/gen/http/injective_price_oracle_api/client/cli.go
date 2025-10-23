@@ -17,13 +17,13 @@ import (
 
 // BuildProbePayload builds the payload for the Injective Price Oracle API
 // probe endpoint from CLI flags.
-func BuildProbePayload(injectivePriceOracleAPIProbeBody string) (*injectivepriceoracleapi.ProbePayload, error) {
+func BuildProbePayload(injectivePriceOracleAPIProbeBody string, injectivePriceOracleAPIProbeKey string) (*injectivepriceoracleapi.ProbePayload, error) {
 	var err error
 	var body ProbeRequestBody
 	{
 		err = json.Unmarshal([]byte(injectivePriceOracleAPIProbeBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"content\": \"Q29uc2VxdWF0dXIgZWEgdm9sdXB0YXRlbSBpbi4=\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, \nerror: %s, \nexample of valid JSON:\n%s", err, "'{\n      \"content\": \"RmFjaWxpcyBvZmZpY2lpcy4=\"\n   }'")
 		}
 		if body.Content == nil {
 			err = goa.MergeErrors(err, goa.MissingFieldError("content", "body"))
@@ -32,9 +32,16 @@ func BuildProbePayload(injectivePriceOracleAPIProbeBody string) (*injectiveprice
 			return nil, err
 		}
 	}
+	var key *string
+	{
+		if injectivePriceOracleAPIProbeKey != "" {
+			key = &injectivePriceOracleAPIProbeKey
+		}
+	}
 	v := &injectivepriceoracleapi.ProbePayload{
 		Content: body.Content,
 	}
+	v.Key = key
 
 	return v, nil
 }

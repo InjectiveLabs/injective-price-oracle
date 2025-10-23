@@ -15,7 +15,7 @@ var _ = Service("health", func() {
 		Path("/api/health/v1")
 	})
 	GRPC(func() {
-		Package("api.v1")
+		Package("injective-price-oracle.api.v1")
 	})
 	// Sets CORS response headers for requests with Origin header matching the string "localhost"
 	cors.Origin("*", func() {

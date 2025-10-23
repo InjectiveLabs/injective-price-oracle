@@ -255,6 +255,7 @@ func iniAPIOptions(
 	cmd *cli.Cmd,
 	grpcWebListenAddress **string,
 	grpcWebRequestTimeout **string,
+	apiKey **string,
 ) {
 	*grpcWebListenAddress = cmd.String(cli.StringOpt{
 		Name:   "grpc-web-listen-address",
@@ -268,4 +269,11 @@ func iniAPIOptions(
 		EnvVar: "GRPC_WEB_REQUEST_TIMEOUT",
 		Value:  "10s",
 	})
+	*apiKey = cmd.String(cli.StringOpt{
+		Name:   "api-key",
+		Desc:   "API key for authenticating requests to the price oracle API",
+		EnvVar: "API_KEY",
+		Value:  "",
+	})
+
 }

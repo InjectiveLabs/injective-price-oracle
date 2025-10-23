@@ -11,12 +11,19 @@ import (
 	"context"
 
 	goa "goa.design/goa/v3/pkg"
+	"goa.design/goa/v3/security"
 )
 
 // Injective-Price-Oracle services API doc
 type Service interface {
 	// Validate TOML file
 	Probe(context.Context, *ProbePayload) (res *ProbeResponse, err error)
+}
+
+// Auther defines the authorization functions to be implemented by the service.
+type Auther interface {
+	// APIKeyAuth implements the authorization logic for the APIKey security scheme.
+	APIKeyAuth(ctx context.Context, key string, schema *security.APIKeyScheme) (context.Context, error)
 }
 
 // ServiceName is the name of the service as defined in the design. This is the
@@ -32,6 +39,8 @@ var MethodNames = [1]string{"probe"}
 // ProbePayload is the payload type of the Injective Price Oracle API service
 // probe method.
 type ProbePayload struct {
+	// API key for authentication
+	Key *string
 	// TOML file contents
 	Content []byte
 }
@@ -65,6 +74,15 @@ func MakeNotFound(err error) *goa.ServiceError {
 func MakeInternal(err error) *goa.ServiceError {
 	return &goa.ServiceError{
 		Name:    "internal",
+		ID:      goa.NewErrorID(),
+		Message: err.Error(),
+	}
+}
+
+// MakeUnauthorized builds a goa.ServiceError from an error.
+func MakeUnauthorized(err error) *goa.ServiceError {
+	return &goa.ServiceError{
+		Name:    "unauthorized",
 		ID:      goa.NewErrorID(),
 		Message: err.Error(),
 	}

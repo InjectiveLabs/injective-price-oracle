@@ -24,7 +24,7 @@ paths:
                 data: {}
                 errmsg: Something has failed
                 s: error
-                status: Atque omnis.
+                status: Maiores ut et quaerat ad dignissimos nostrum.
         "500":
           description: Internal Server Error response.
           content:
@@ -42,6 +42,16 @@ paths:
       summary: probe Injective Price Oracle API
       description: Validate TOML file
       operationId: Injective Price Oracle API#probe
+      parameters:
+      - name: X-Api-Key
+        in: header
+        description: API key for authentication
+        allowEmptyValue: true
+        schema:
+          type: string
+          description: API key for authentication
+          example: Commodi similique placeat ratione et impedit aliquid.
+        example: Autem consequatur.
       requestBody:
         required: true
         content:
@@ -50,34 +60,22 @@ paths:
               $ref: '#/components/schemas/ProbeRequestBody'
             example:
               content:
-              - 67
-              - 111
-              - 110
-              - 115
-              - 101
-              - 113
-              - 117
+              - 70
               - 97
-              - 116
-              - 117
-              - 114
-              - 32
-              - 101
-              - 97
-              - 32
-              - 118
-              - 111
-              - 108
-              - 117
-              - 112
-              - 116
-              - 97
-              - 116
-              - 101
-              - 109
-              - 32
+              - 99
               - 105
-              - 110
+              - 108
+              - 105
+              - 115
+              - 32
+              - 111
+              - 102
+              - 102
+              - 105
+              - 99
+              - 105
+              - 105
+              - 115
               - 46
       responses:
         "200":
@@ -87,9 +85,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProbeResponse'
               example:
-                result: Facilis officiis.
+                result: Expedita est quo eos amet dolores consequatur.
         "400":
           description: Bad Request response.
+          content:
+            application/vnd.goa.error:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                id: 3F1FKVRR
+                message: Value of ID must be an integer
+                name: bad_request
+        "401":
+          description: Unauthorized response.
           content:
             application/vnd.goa.error:
               schema:
@@ -108,6 +116,8 @@ paths:
                 id: 3F1FKVRR
                 message: Value of ID must be an integer
                 name: bad_request
+      security:
+      - api_key_header_X-Api-Key: []
 components:
   schemas:
     Error:
@@ -116,7 +126,7 @@ components:
         fault:
           type: boolean
           description: Is the error a server-side fault?
-          example: true
+          example: false
         id:
           type: string
           description: ID is a unique identifier for this particular occurrence of
@@ -138,7 +148,7 @@ components:
         timeout:
           type: boolean
           description: Is the error a timeout?
-          example: true
+          example: false
       description: Invalid argument
       example:
         id: 3F1FKVRR
@@ -174,12 +184,12 @@ components:
           - no_data
         status:
           type: string
-          example: Impedit dolorem repudiandae error pariatur.
+          example: Vel consequuntur totam maiores harum neque alias.
       example:
         data: {}
         errmsg: Something has failed
         s: error
-        status: Ratione esse beatae eaque.
+        status: Magni dolorem nesciunt.
       required:
       - s
       - status
@@ -190,19 +200,51 @@ components:
           type: string
           description: TOML file contents
           example:
-          - 78
-          - 101
-          - 115
-          - 99
+          - 69
+          - 114
+          - 114
+          - 111
+          - 114
+          - 32
+          - 112
+          - 97
+          - 114
           - 105
-          - 117
-          - 110
+          - 97
           - 116
+          - 117
+          - 114
           - 32
           - 113
           - 117
           - 105
           - 115
+          - 32
+          - 114
+          - 97
+          - 116
+          - 105
+          - 111
+          - 110
+          - 101
+          - 32
+          - 101
+          - 115
+          - 115
+          - 101
+          - 32
+          - 98
+          - 101
+          - 97
+          - 116
+          - 97
+          - 101
+          - 32
+          - 101
+          - 97
+          - 113
+          - 117
+          - 101
           - 46
           format: binary
       example:
@@ -210,15 +252,20 @@ components:
         - 81
         - 117
         - 105
-        - 97
-        - 32
-        - 115
-        - 101
         - 100
-        - 32
         - 101
+        - 109
+        - 32
+        - 108
+        - 97
+        - 98
         - 111
-        - 115
+        - 114
+        - 117
+        - 109
+        - 32
+        - 117
+        - 116
         - 46
       required:
       - content
@@ -228,11 +275,16 @@ components:
         result:
           type: string
           description: Result of the probe
-          example: Ut temporibus rem maxime ex eos.
+          example: Et atque labore veniam voluptate.
       example:
-        result: Ut consequatur temporibus non dolor rerum commodi.
+        result: Quibusdam quam doloribus voluptatibus.
       required:
       - result
+  securitySchemes:
+    api_key_header_X-Api-Key:
+      type: apiKey
+      name: X-Api-Key
+      in: header
 tags:
 - name: Injective Price Oracle API
   description: Injective-Price-Oracle services API doc

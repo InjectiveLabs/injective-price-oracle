@@ -42,6 +42,10 @@ func EncodeProbeRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.
 		if !ok {
 			return goahttp.ErrInvalidType("Injective Price Oracle API", "probe", "*injectivepriceoracleapi.ProbePayload", v)
 		}
+		if p.Key != nil {
+			head := *p.Key
+			req.Header.Set("X-Api-Key", head)
+		}
 		if err := encoder(req).Encode(p); err != nil {
 			return goahttp.ErrEncodingError("Injective Price Oracle API", "probe", err)
 		}
@@ -74,6 +78,7 @@ func NewInjectivePriceOracleAPIProbeEncoder(encoderFn InjectivePriceOracleAPIPro
 // DecodeProbeResponse may return the following errors:
 //   - "invalid_arg" (type *goa.ServiceError): http.StatusBadRequest
 //   - "internal" (type *goa.ServiceError): http.StatusInternalServerError
+//   - "unauthorized" (type *goa.ServiceError): http.StatusUnauthorized
 //   - error: internal error
 func DecodeProbeResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (interface{}, error) {
 	return func(resp *http.Response) (interface{}, error) {
@@ -133,6 +138,20 @@ func DecodeProbeResponse(decoder func(*http.Response) goahttp.Decoder, restoreBo
 				return nil, goahttp.ErrValidationError("Injective Price Oracle API", "probe", err)
 			}
 			return nil, NewProbeInternal(&body)
+		case http.StatusUnauthorized:
+			var (
+				body ProbeUnauthorizedResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("Injective Price Oracle API", "probe", err)
+			}
+			err = ValidateProbeUnauthorizedResponseBody(&body)
+			if err != nil {
+				return nil, goahttp.ErrValidationError("Injective Price Oracle API", "probe", err)
+			}
+			return nil, NewProbeUnauthorized(&body)
 		default:
 			body, _ := ioutil.ReadAll(resp.Body)
 			return nil, goahttp.ErrInvalidResponse("Injective Price Oracle API", "probe", resp.StatusCode, string(body))

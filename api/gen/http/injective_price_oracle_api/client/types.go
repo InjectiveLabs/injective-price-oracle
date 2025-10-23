@@ -62,6 +62,25 @@ type ProbeInternalResponseBody struct {
 	Fault *bool `form:"fault,omitempty" json:"fault,omitempty" xml:"fault,omitempty"`
 }
 
+// ProbeUnauthorizedResponseBody is the type of the "Injective Price Oracle
+// API" service "probe" endpoint HTTP response body for the "unauthorized"
+// error.
+type ProbeUnauthorizedResponseBody struct {
+	// Name is the name of this class of errors.
+	Name *string `form:"name,omitempty" json:"name,omitempty" xml:"name,omitempty"`
+	// ID is a unique identifier for this particular occurrence of the problem.
+	ID *string `form:"id,omitempty" json:"id,omitempty" xml:"id,omitempty"`
+	// Message is a human-readable explanation specific to this occurrence of the
+	// problem.
+	Message *string `form:"message,omitempty" json:"message,omitempty" xml:"message,omitempty"`
+	// Is the error temporary?
+	Temporary *bool `form:"temporary,omitempty" json:"temporary,omitempty" xml:"temporary,omitempty"`
+	// Is the error a timeout?
+	Timeout *bool `form:"timeout,omitempty" json:"timeout,omitempty" xml:"timeout,omitempty"`
+	// Is the error a server-side fault?
+	Fault *bool `form:"fault,omitempty" json:"fault,omitempty" xml:"fault,omitempty"`
+}
+
 // NewProbeRequestBody builds the HTTP request body from the payload of the
 // "probe" endpoint of the "Injective Price Oracle API" service.
 func NewProbeRequestBody(p *injectivepriceoracleapi.ProbePayload) *ProbeRequestBody {
@@ -111,6 +130,21 @@ func NewProbeInternal(body *ProbeInternalResponseBody) *goa.ServiceError {
 	return v
 }
 
+// NewProbeUnauthorized builds a Injective Price Oracle API service probe
+// endpoint unauthorized error.
+func NewProbeUnauthorized(body *ProbeUnauthorizedResponseBody) *goa.ServiceError {
+	v := &goa.ServiceError{
+		Name:      *body.Name,
+		ID:        *body.ID,
+		Message:   *body.Message,
+		Temporary: *body.Temporary,
+		Timeout:   *body.Timeout,
+		Fault:     *body.Fault,
+	}
+
+	return v
+}
+
 // ValidateProbeResponseBody runs the validations defined on ProbeResponseBody
 func ValidateProbeResponseBody(body *ProbeResponseBody) (err error) {
 	if body.Result == nil {
@@ -146,6 +180,30 @@ func ValidateProbeInvalidArgResponseBody(body *ProbeInvalidArgResponseBody) (err
 // ValidateProbeInternalResponseBody runs the validations defined on
 // probe_internal_response_body
 func ValidateProbeInternalResponseBody(body *ProbeInternalResponseBody) (err error) {
+	if body.Name == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("name", "body"))
+	}
+	if body.ID == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("id", "body"))
+	}
+	if body.Message == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("message", "body"))
+	}
+	if body.Temporary == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("temporary", "body"))
+	}
+	if body.Timeout == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("timeout", "body"))
+	}
+	if body.Fault == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("fault", "body"))
+	}
+	return
+}
+
+// ValidateProbeUnauthorizedResponseBody runs the validations defined on
+// probe_unauthorized_response_body
+func ValidateProbeUnauthorizedResponseBody(body *ProbeUnauthorizedResponseBody) (err error) {
 	if body.Name == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("name", "body"))
 	}
