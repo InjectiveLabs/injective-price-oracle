@@ -1,3 +1,5 @@
+.PHONY: install install-ubuntu image push test gen
+
 APP_VERSION = $(shell git describe --abbrev=0 --tags)
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 BUILD_DATE = $(shell date -u "+%Y%m%d-%H%M")
@@ -28,8 +30,13 @@ install-ubuntu:
 		-ldflags $(VERSION_FLAGS) \
 		./cmd/...
 
-.PHONY: install install-ubuntu image push test gen
 
 test:
 	# go clean -testcache
 	go test ./test/...
+
+gen-goa: export GOPROXY=direct
+gen-goa:
+	rm -rf ./api/gen
+	go generate ./api/...
+gen: gen-goa

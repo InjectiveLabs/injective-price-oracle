@@ -17,10 +17,9 @@ import (
 )
 
 const (
-	messageTypeInvalid            messageType = "invalid_message"
-	messageTypeOraclePrices       messageType = "oracle_prices"
-	messageTypeSubscribe          messageType = "subscribe"
-	MaxStorkTimestampIntervalNano             = 500_000_000 // 5000ms
+	messageTypeInvalid      messageType = "invalid_message"
+	messageTypeOraclePrices messageType = "oracle_prices"
+	messageTypeSubscribe    messageType = "subscribe"
 )
 
 var ErrInvalidMessage = errors.New("received invalid message")

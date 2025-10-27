@@ -1,6 +1,8 @@
 package main
 
-import cli "github.com/jawher/mow.cli"
+import (
+	cli "github.com/jawher/mow.cli"
+)
 
 // initGlobalOptions defines some global CLI options, that are useful for most parts of the app.
 // Before adding option to there, consider moving it into the actual Cmd.
@@ -226,7 +228,7 @@ func initStatsdOptions(
 	})
 }
 
-func initStorkOracleWebSocket(
+func initStorkOracleWebSocketOptions(
 	cmd *cli.Cmd,
 	websocketUrl **string,
 	websocketHeader **string,
@@ -247,4 +249,31 @@ func initStorkOracleWebSocket(
 		Desc:   "Stork websocket subscribe message",
 		EnvVar: "STORK_WEBSOCKET_SUBSCRIBE_MESSAGE",
 	})
+}
+
+func iniAPIOptions(
+	cmd *cli.Cmd,
+	grpcWebListenAddress **string,
+	grpcWebRequestTimeout **string,
+	apiKey **string,
+) {
+	*grpcWebListenAddress = cmd.String(cli.StringOpt{
+		Name:   "grpc-web-listen-address",
+		Desc:   "GRPC_WEB_LISTEN_ADDRESS,",
+		EnvVar: "GRPC_WEB_LISTEN_ADDRESS",
+		Value:  "0.0.0.0:9924",
+	})
+	*grpcWebRequestTimeout = cmd.String(cli.StringOpt{
+		Name:   "grpc-web-request-timeout",
+		Desc:   "GRPC web request timeout duration",
+		EnvVar: "GRPC_WEB_REQUEST_TIMEOUT",
+		Value:  "10s",
+	})
+	*apiKey = cmd.String(cli.StringOpt{
+		Name:   "api-key",
+		Desc:   "API key for authenticating requests to the price oracle API",
+		EnvVar: "API_KEY",
+		Value:  "",
+	})
+
 }

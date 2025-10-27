@@ -194,7 +194,7 @@ INFO[0000] Answer: 4948000
 
 ### Native Go code
 
-Yes, you can also simply fork this repo and add own native implementations of the price feeds. There is a Binance example provided in [feed_binance.go](/oracle/feed_binance.go). Any complex feed can be added as long as the implementation follows this Go interface:
+Yes, you can also simply fork this repo and add own native implementations of the price feeds. There is a Binance example provided in [feed_binance.go](/internal/service/oracle/feed_binance.go). Any complex feed can be added as long as the implementation follows this Go interface:
 
 ```go
 type PricePuller interface {

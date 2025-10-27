@@ -8,7 +8,7 @@ import (
 	cli "github.com/jawher/mow.cli"
 	"github.com/xlab/closer"
 
-	"github.com/InjectiveLabs/injective-price-oracle/oracle"
+	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle"
 )
 
 // probeCmd action validates target TOML file spec and runs it once, printing the result.

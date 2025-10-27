@@ -8,13 +8,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	log "github.com/InjectiveLabs/suplog"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	log "github.com/InjectiveLabs/suplog"
 
 	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 )
