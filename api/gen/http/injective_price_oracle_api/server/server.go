@@ -172,7 +172,7 @@ func HandleInjectivePriceOracleAPIOrigin(h http.Handler) http.Handler {
 			if acrm := r.Header.Get("Access-Control-Request-Method"); acrm != "" {
 				// We are handling a preflight request
 				w.Header().Set("Access-Control-Allow-Methods", "POST")
-				w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Api-Key")
 			}
 			h.ServeHTTP(w, r)
 			return

@@ -15,7 +15,7 @@ var _ = Service("Injective Price Oracle API", func() {
 
 	cors.Origin("*", func() {
 		cors.Methods("POST")
-		cors.Headers("Content-Type")
+		cors.Headers("Content-Type", "X-Api-Key")
 	})
 
 	Error("invalid_arg", ErrorResult, "Invalid argument")
