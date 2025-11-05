@@ -10,10 +10,29 @@ import (
 var _ = API("PriceOracle", func() {
 	Title("PriceOracle Service")
 	Description("HTTP server for the Price Oracle API")
+
 	Server("PriceOracle", func() {
-		Host("0.0.0.0", func() {
-			URI("http://0.0.0.0:9924")
-			URI("grpc://0.0.0.0:9881")
+		Host("mainnet", func() {
+			URI("https://k8s.mainnet.price-oracle.injective.network")
 		})
+		Host("testnet", func() {
+			URI("https://k8s.mainnet.staging.price-oracle.injective.network")
+		})
+	})
+})
+
+var _ = Service("Swagger", func() {
+	Description("The API Swagger specification")
+
+	HTTP(func() {
+		Path("/swagger")
+	})
+
+	Files("/index.html", "./swagger/index.html", func() {
+		Description("Provide Swagger-UI html document")
+	})
+
+	Files("/{*path}", "./swagger/", func() {
+		Description("Serve static content.")
 	})
 })

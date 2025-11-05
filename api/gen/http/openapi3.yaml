@@ -4,7 +4,8 @@ info:
   description: HTTP server for the Price Oracle API
   version: "1.0"
 servers:
-- url: http://0.0.0.0:9924
+- url: https://k8s.mainnet.price-oracle.injective.network
+- url: https://k8s.mainnet.staging.price-oracle.injective.network
 paths:
   /api/health/v1/status:
     get:
@@ -50,8 +51,8 @@ paths:
         schema:
           type: string
           description: API key for authentication
-          example: Commodi similique placeat ratione et impedit aliquid.
-        example: Autem consequatur.
+          example: Neque alias nisi.
+        example: Dolorem nesciunt eum commodi similique placeat ratione.
       requestBody:
         required: true
         content:
@@ -118,6 +119,33 @@ paths:
                 name: bad_request
       security:
       - api_key_header_X-Api-Key: []
+  /swagger/{*path}:
+    get:
+      tags:
+      - Swagger
+      summary: Download ./swagger/
+      description: Serve static content.
+      operationId: Swagger#/swagger/{*path}
+      parameters:
+      - name: path
+        in: path
+        description: Relative file path
+        required: true
+      responses:
+        "200":
+          description: File not found
+        "404":
+          description: File not found
+  /swagger/index.html:
+    get:
+      tags:
+      - Swagger
+      summary: Download ./swagger/index.html
+      description: Provide Swagger-UI html document
+      operationId: Swagger#/swagger/index.html
+      responses:
+        "200":
+          description: File downloaded
 components:
   schemas:
     Error:
@@ -148,7 +176,7 @@ components:
         timeout:
           type: boolean
           description: Is the error a timeout?
-          example: false
+          example: true
       description: Invalid argument
       example:
         id: 3F1FKVRR
@@ -184,12 +212,12 @@ components:
           - no_data
         status:
           type: string
-          example: Vel consequuntur totam maiores harum neque alias.
+          example: Voluptatibus animi quia sed dolor.
       example:
         data: {}
         errmsg: Something has failed
         s: error
-        status: Magni dolorem nesciunt.
+        status: Consequuntur totam maiores.
       required:
       - s
       - status
@@ -200,7 +228,19 @@ components:
           type: string
           description: TOML file contents
           example:
-          - 69
+          - 82
+          - 101
+          - 112
+          - 117
+          - 100
+          - 105
+          - 97
+          - 110
+          - 100
+          - 97
+          - 101
+          - 32
+          - 101
           - 114
           - 114
           - 111
@@ -214,58 +254,35 @@ components:
           - 116
           - 117
           - 114
-          - 32
-          - 113
-          - 117
-          - 105
-          - 115
-          - 32
-          - 114
-          - 97
-          - 116
-          - 105
-          - 111
-          - 110
-          - 101
-          - 32
-          - 101
-          - 115
-          - 115
-          - 101
-          - 32
-          - 98
-          - 101
-          - 97
-          - 116
-          - 97
-          - 101
-          - 32
-          - 101
-          - 97
-          - 113
-          - 117
-          - 101
           - 46
           format: binary
       example:
         content:
-        - 81
-        - 117
-        - 105
-        - 100
-        - 101
-        - 109
-        - 32
-        - 108
+        - 82
         - 97
-        - 98
-        - 111
-        - 114
-        - 117
-        - 109
-        - 32
-        - 117
         - 116
+        - 105
+        - 111
+        - 110
+        - 101
+        - 32
+        - 101
+        - 115
+        - 115
+        - 101
+        - 32
+        - 98
+        - 101
+        - 97
+        - 116
+        - 97
+        - 101
+        - 32
+        - 101
+        - 97
+        - 113
+        - 117
+        - 101
         - 46
       required:
       - content
@@ -275,9 +292,9 @@ components:
         result:
           type: string
           description: Result of the probe
-          example: Et atque labore veniam voluptate.
+          example: Quidem laborum ut.
       example:
-        result: Quibusdam quam doloribus voluptatibus.
+        result: Et atque labore veniam voluptate.
       required:
       - result
   securitySchemes:
@@ -288,6 +305,8 @@ components:
 tags:
 - name: Injective Price Oracle API
   description: Injective-Price-Oracle services API doc
+- name: Swagger
+  description: The API Swagger specification
 - name: health
   description: HealthAPI allows to check if backend data is up-to-date and reliable
     or not.

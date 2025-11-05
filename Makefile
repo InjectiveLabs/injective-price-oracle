@@ -35,8 +35,29 @@ test:
 	# go clean -testcache
 	go test ./test/...
 
-gen-goa: export GOPROXY=direct
+###############################################################################
+###                               Generation                                ###
+###############################################################################
+genImageName=indexer-price-oracle-code-generation:1.0.0
+dockerGenRun=docker run --rm -v $(CURDIR):/workspace --workdir /workspace
+genFiles=$(dockerGenRun) $(genImageName)
+genFilesWithGoPath=$(dockerGenRun) -v $(GOPATH)/pkg:/go/pkg $(genImageName)
+
+gen-docker-build:
+	@if [ -z "$$(docker images -q $(genImageName))" ]; then \
+		echo "Docker image $(genImageName) not found. Building..."; \
+		docker build --build-arg GH_USER=$(GH_USER) \
+			--build-arg GH_TOKEN=$(GH_TOKEN) \
+			-t $(genImageName) -f gen/Dockerfile . ; \
+	else \
+		echo "Docker image $(genImageName) already exists. Skipping build."; \
+	fi
+
+gen-docker-rebuild:
+	@docker image rm $(genImageName) || true
+	make gen-docker-build
+
 gen-goa:
-	rm -rf ./api/gen
-	go generate ./api/...
-gen: gen-goa
+	@$(genFiles) sh ./gen/gen-goa.sh
+
+gen: gen-docker-build gen-goa

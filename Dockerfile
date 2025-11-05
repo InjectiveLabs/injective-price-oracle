@@ -1,5 +1,5 @@
 #install packages for build layer
-FROM golang:1.24.5-alpine AS builder
+FROM golang:1.25.3-alpine AS builder
 RUN apk add --no-cache git gcc make perl jq libc-dev linux-headers
 
 ADD https://github.com/CosmWasm/wasmvm/releases/download/v2.1.5/libwasmvm_muslc.aarch64.a /lib/libwasmvm_muslc.aarch64.a
@@ -21,10 +21,11 @@ COPY . .
 RUN make install
 
 #build main container
-FROM alpine:latest
+FROM alpine:3.22.2
 RUN apk add --no-cache ca-certificates aws-cli curl tree mongodb-tools nodejs npm
 RUN rm -rf /var/cache/apk/*
 COPY --from=builder /go/bin/* /usr/local/bin/
+COPY --from=builder /src/swagger /apps/data/swagger
 
 #configure container
 VOLUME /apps/data
