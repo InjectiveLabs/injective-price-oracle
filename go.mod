@@ -1,8 +1,6 @@
 module github.com/InjectiveLabs/injective-price-oracle
 
-go 1.24.0
-
-toolchain go1.24.5
+go 1.24.5
 
 require (
 	cosmossdk.io/math v1.4.0
@@ -15,7 +13,6 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/jawher/mow.cli v1.2.0
-	github.com/joho/godotenv v1.4.0
 	github.com/jpillora/backoff v1.0.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pelletier/go-toml/v2 v2.2.3

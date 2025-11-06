@@ -16,9 +16,12 @@ import (
 	api_health "github.com/InjectiveLabs/injective-price-oracle/api/gen/grpc/health/server"
 	api_health_service "github.com/InjectiveLabs/injective-price-oracle/api/gen/health"
 	api_http_server "github.com/InjectiveLabs/injective-price-oracle/api/gen/http/injective_price_oracle_api/server"
+	swaggerHTTPServer "github.com/InjectiveLabs/injective-price-oracle/api/gen/http/swagger/server"
 	api_server_service "github.com/InjectiveLabs/injective-price-oracle/api/gen/injective_price_oracle_api"
+	swaggerEndpoints "github.com/InjectiveLabs/injective-price-oracle/api/gen/swagger"
 	"github.com/InjectiveLabs/injective-price-oracle/internal/service/health"
 	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle"
+	"github.com/InjectiveLabs/injective-price-oracle/internal/service/swagger"
 
 	log "github.com/InjectiveLabs/suplog"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
@@ -112,6 +115,20 @@ func apiCmd(cmd *cli.Cmd) {
 		)
 
 		api_http_server.Mount(grpcWebMux, apiRouter)
+
+		swaggerSvc := swagger.NewSwaggerService()
+
+		swaggerRouter := swaggerHTTPServer.New(
+			swaggerEndpoints.NewEndpoints(swaggerSvc),
+			grpcWebMux,
+			goahttp.RequestDecoder,
+			goahttp.ResponseEncoder,
+			newErrorHandler(log.DefaultLogger),
+			nil,
+			nil,
+			nil,
+		)
+		swaggerHTTPServer.Mount(grpcWebMux, swaggerRouter)
 
 		// only need to serve Grpc-Web
 		handlerWithCors := cors.New(cors.Options{
