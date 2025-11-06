@@ -1,4 +1,4 @@
-FROM golang:1.24.5-alpine
+FROM golang:1.24.0-alpine
 
 RUN apk add --no-cache git make protoc nodejs npm libc6-compat
 

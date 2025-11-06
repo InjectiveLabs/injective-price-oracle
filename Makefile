@@ -38,7 +38,7 @@ test:
 ###############################################################################
 ###                               Generation                                ###
 ###############################################################################
-genImageName=indexer-price-oracle-code-generation:1.0.0
+genImageName=indexer-price-oracle-code-generation:1.0.3
 dockerGenRun=docker run --rm -v $(CURDIR):/workspace --workdir /workspace
 genFiles=$(dockerGenRun) $(genImageName)
 genFilesWithGoPath=$(dockerGenRun) -v $(GOPATH)/pkg:/go/pkg $(genImageName)
