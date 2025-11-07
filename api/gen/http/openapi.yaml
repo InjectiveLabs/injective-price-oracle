@@ -3,7 +3,7 @@ info:
   title: PriceOracle Service
   description: HTTP server for the Price Oracle API
   version: ""
-host: k8s.mainnet.price-oracle.injective.network
+host: k8s.mainnet.eu.price-oracle.injective.network
 consumes:
 - application/json
 - application/xml
