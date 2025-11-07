@@ -150,14 +150,33 @@ func apiCmd(cmd *cli.Cmd) {
 		mountGRPCWebServices(grpcWebMux, grpcWeb, grpcweb.ListGRPCResources(grpcServer), 10*time.Second)
 
 		httpSrv := &http.Server{
-			Addr:    *grpcWebListenAddress,
-			Handler: handlerWithCors.Handler(grpcWebMux),
+			Addr:         *grpcWebListenAddress,
+			Handler:      handlerWithCors.Handler(grpcWebMux),
+			ReadTimeout:  2 * time.Second,
+			WriteTimeout: 2 * time.Second,
+			IdleTimeout:  10 * time.Second,
 		}
 
-		log.Infof("injective price oracle api starts listening on %s", *grpcWebListenAddress)
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.WithError(err).Fatalln("failed to start HTTP server")
+		// Start server in goroutine
+		go func() {
+			log.Infof("injective price oracle api starts listening on %s", *grpcWebListenAddress)
+			if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.WithError(err).Fatalln("failed to start HTTP server")
+			}
+		}()
+
+		<-ctx.Done()
+
+		shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelShutdown()
+
+		grpcServer.GracefulStop()
+
+		if err = httpSrv.Shutdown(shutdownCtx); err != nil {
+			log.WithError(err).Error("HTTP server graceful shutdown failed")
 		}
+
+		log.Info("Shutdown complete")
 	}
 
 }

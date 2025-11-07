@@ -4,7 +4,7 @@ info:
   description: HTTP server for the Price Oracle API
   version: "1.0"
 servers:
-- url: https://k8s.mainnet.price-oracle.injective.network
+- url: https://k8s.mainnet.eu.price-oracle.injective.network
 - url: https://k8s.mainnet.staging.price-oracle.injective.network
 paths:
   /api/health/v1/status:
