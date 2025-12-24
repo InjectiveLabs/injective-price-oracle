@@ -16,10 +16,15 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	cosmtypes "github.com/cosmos/cosmos-sdk/types"
 	cli "github.com/jawher/mow.cli"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
+	streams "github.com/smartcontractkit/data-streams-sdk/go"
 	"github.com/xlab/closer"
 
 	svcoracle "github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle"
+	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/chainlink"
+	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/stork"
+	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/types"
 	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
 )
 
@@ -72,6 +77,11 @@ func oracleCmd(cmd *cli.Cmd) {
 		websocketUrl              *string
 		websocketHeader           *string
 		websocketSubscribeMessage *string
+
+		// Chainlink Data Streams params
+		chainlinkWsURL     *string
+		chainlinkAPIKey    *string
+		chainlinkAPISecret *string
 	)
 
 	initCosmosOptions(
@@ -118,6 +128,13 @@ func oracleCmd(cmd *cli.Cmd) {
 		&websocketUrl,
 		&websocketHeader,
 		&websocketSubscribeMessage,
+	)
+
+	initChainlinkDataStreamsOptions(
+		cmd,
+		&chainlinkWsURL,
+		&chainlinkAPIKey,
+		&chainlinkAPISecret,
 	)
 
 	cmd.Action = func() {
@@ -192,8 +209,12 @@ func oracleCmd(cmd *cli.Cmd) {
 
 		var storkEnabled bool
 		storkMap := make(map[string]struct{})
+		chainlinkMap := make(map[string]struct{})
 
-		feedConfigs := make(map[string]*svcoracle.FeedConfig)
+		var chainlinkEnabled bool
+
+		feedConfigs := make(map[string]*types.FeedConfig)
+
 		if len(*feedsDir) > 0 {
 			err := filepath.WalkDir(*feedsDir, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
@@ -206,24 +227,49 @@ func oracleCmd(cmd *cli.Cmd) {
 
 				cfgBody, err := os.ReadFile(path)
 				if err != nil {
-					err = errors.Wrapf(err, "failed to read dynamic feed config")
+					err = errors.Wrapf(err, "failed to read feed config")
 					return err
 				}
 
-				feedCfg, err := svcoracle.ParseDynamicFeedConfig(cfgBody)
-				if err != nil {
+				// First try to determine provider type by parsing as generic FeedConfig
+				var genericCfg types.FeedConfig
+				if err := toml.Unmarshal(cfgBody, &genericCfg); err != nil {
 					log.WithError(err).WithFields(log.Fields{
 						"filename": d.Name(),
-					}).Errorln("failed to parse dynamic feed config")
+					}).Errorln("failed to parse feed config")
 					return nil
 				}
 
-				if feedCfg.ProviderName == svcoracle.FeedProviderStork.String() {
+				if genericCfg.ProviderName == types.FeedProviderStork.String() {
 					storkEnabled = true
+					feedCfg, err := stork.ParseStorkFeedConfig(cfgBody)
+					if err != nil {
+						log.WithError(err).WithFields(log.Fields{
+							"filename": d.Name(),
+						}).Errorln("failed to parse stork feed config")
+						return nil
+					}
 					storkMap[feedCfg.Ticker] = struct{}{}
+					feedConfigs[filepath.Base(path)] = feedCfg
+				} else if genericCfg.ProviderName == types.FeedProviderChainlink.String() {
+					chainlinkEnabled = true
+					// Parse Chainlink specific config to extract feed IDs
+					feedCfg, err := chainlink.ParseChainlinkFeedConfig(cfgBody)
+					if err != nil {
+						log.WithError(err).WithFields(log.Fields{
+							"filename": d.Name(),
+						}).Errorln("failed to parse stork feed config")
+						return nil
+					}
+					chainlinkMap[feedCfg.FeedID] = struct{}{}
+					feedConfigs[filepath.Base(path)] = feedCfg
+				} else {
+					// Unsupported provider
+					log.WithFields(log.Fields{
+						"filename": d.Name(),
+						"provider": genericCfg.ProviderName,
+					}).Warningln("unsupported feed provider, skipping")
 				}
-
-				feedConfigs[filepath.Base(path)] = feedCfg
 
 				return nil
 			})
@@ -237,7 +283,7 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Infof("found %d dynamic feed configs", len(feedConfigs))
 		}
 
-		var storkFetcher svcoracle.StorkFetcher
+		var storkFetcher stork.StorkFetcher
 
 		if storkEnabled {
 			var storkTickers []string
@@ -245,7 +291,42 @@ func oracleCmd(cmd *cli.Cmd) {
 				storkTickers = append(storkTickers, ticker)
 			}
 
-			storkFetcher = svcoracle.NewStorkFetcher(*websocketSubscribeMessage, storkTickers)
+			storkFetcher = stork.NewFetcher(*websocketSubscribeMessage, storkTickers)
+		}
+
+		var chainlinkFetcher chainlink.ChainLinkFetcher
+
+		if chainlinkEnabled {
+			var feeds []string
+			for feedID := range chainlinkMap {
+				feeds = append(feeds, feedID)
+			}
+
+			// Set up the SDK client configuration
+			cfg := streams.Config{
+				ApiKey:    *chainlinkAPIKey,
+				ApiSecret: *chainlinkAPISecret,
+				WsURL:     *chainlinkWsURL,
+				Logger:    streams.LogPrintf,
+			}
+
+			log.Infoln("creating Chainlink Data Streams client")
+			log.Infoln("Chainlink Data Streams WS URL:", cfg.WsURL)
+			log.Infoln("Chainlink Data Streams Feeds:", feeds)
+			log.Infoln("Chainlink Data Streams API Key:", cfg.ApiKey)
+			log.Infoln("Chainlink Data Streams API Secret:", cfg.ApiSecret)
+
+			client, err := streams.New(cfg)
+			if err != nil {
+				log.WithError(err).Fatalln("failed to create Chainlink Data Streams client")
+				return
+			}
+
+			fetcher, err := chainlink.NewFetcher(client, feeds)
+			if err != nil {
+				log.WithError(err).Fatalln("failed to create Chainlink fetcher")
+			}
+			chainlinkFetcher = fetcher
 		}
 
 		svc, err := svcoracle.NewService(
@@ -253,6 +334,7 @@ func oracleCmd(cmd *cli.Cmd) {
 			cosmosClients,
 			feedConfigs,
 			storkFetcher,
+			chainlinkFetcher,
 		)
 		if err != nil {
 			log.Fatalln(err)
@@ -284,6 +366,27 @@ func oracleCmd(cmd *cli.Cmd) {
 				err = storkFetcher.Start(ctx, conn)
 				if err != nil {
 					log.WithError(err).Errorln("stork fetcher failed")
+				}
+			}
+		}()
+
+		go func() {
+			if chainlinkFetcher == nil {
+				return // no chainlink feeds
+			}
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				err := chainlinkFetcher.Start(ctx)
+				if err != nil {
+					log.WithError(err).Errorln("chainlink fetcher failed, retrying in 5 seconds")
+					time.Sleep(5 * time.Second)
+					continue
 				}
 			}
 		}()
