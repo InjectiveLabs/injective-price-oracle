@@ -1,4 +1,4 @@
-package oracle
+package stork
 
 import (
 	"context"
@@ -35,12 +35,6 @@ func (m messageType) String() string {
 	return string(m)
 }
 
-type StorkConfig struct {
-	WebsocketUrl    string
-	WebsocketHeader string
-	Message         string
-}
-
 type storkFetcher struct {
 	conn        *websocket.Conn
 	latestPairs map[string]*oracletypes.AssetPair
@@ -52,8 +46,8 @@ type storkFetcher struct {
 	svcTags metrics.Tags
 }
 
-// NewStorkFetcher returns a new StorkFetcher instance.
-func NewStorkFetcher(storkMessage string, storkTickers []string) *storkFetcher {
+// NewFetcher returns a new StorkFetcher instance.
+func NewFetcher(storkMessage string, storkTickers []string) *storkFetcher {
 	feed := &storkFetcher{
 		message:     storkMessage,
 		tickers:     storkTickers,

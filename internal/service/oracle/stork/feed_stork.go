@@ -1,4 +1,4 @@
-package oracle
+package stork
 
 import (
 	"context"
@@ -6,16 +6,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/InjectiveLabs/metrics"
+	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
+	log "github.com/InjectiveLabs/suplog"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 
-	"github.com/InjectiveLabs/metrics"
-	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
-	log "github.com/InjectiveLabs/suplog"
+	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/types"
 )
-
-var _ PricePuller = &storkPriceFeed{}
 
 type storkPriceFeed struct {
 	storkFetcher StorkFetcher
@@ -30,8 +29,8 @@ type storkPriceFeed struct {
 	oracleType oracletypes.OracleType
 }
 
-func ParseStorkFeedConfig(body []byte) (*FeedConfig, error) {
-	var config FeedConfig
+func ParseStorkFeedConfig(body []byte) (*types.FeedConfig, error) {
+	var config types.FeedConfig
 	if err := toml.Unmarshal(body, &config); err != nil {
 		err = errors.Wrap(err, "failed to unmarshal TOML config")
 		return nil, err
@@ -41,7 +40,7 @@ func ParseStorkFeedConfig(body []byte) (*FeedConfig, error) {
 }
 
 // NewStorkPriceFeed returns price puller
-func NewStorkPriceFeed(storkFetcher StorkFetcher, cfg *FeedConfig) (PricePuller, error) {
+func NewStorkPriceFeed(storkFetcher StorkFetcher, cfg *types.FeedConfig) (types.PricePuller, error) {
 	pullInterval := 1 * time.Minute
 	if len(cfg.PullInterval) > 0 {
 		interval, err := time.ParseDuration(cfg.PullInterval)
@@ -99,7 +98,7 @@ func (f *storkPriceFeed) Symbol() string {
 	return f.ticker
 }
 
-func (f *storkPriceFeed) Provider() FeedProvider {
+func (f *storkPriceFeed) Provider() types.FeedProvider {
 	return FeedProviderStork
 }
 
@@ -111,12 +110,12 @@ func (f *storkPriceFeed) OracleType() oracletypes.OracleType {
 	return oracletypes.OracleType_Stork
 }
 
-func (f *storkPriceFeed) AssetPair() *oracletypes.AssetPair {
+func (f *storkPriceFeed) GetAssetPair() *oracletypes.AssetPair {
 	return f.storkFetcher.AssetPair(f.ticker)
 }
 
 func (f *storkPriceFeed) PullPrice(_ context.Context) (
-	priceData *PriceData,
+	priceData types.PriceData,
 	err error,
 ) {
 	pair := f.storkFetcher.AssetPair(f.ticker)
@@ -124,8 +123,8 @@ func (f *storkPriceFeed) PullPrice(_ context.Context) (
 		return nil, nil
 	}
 
-	return &PriceData{
-		Ticker:       Ticker(f.ticker),
+	return &StorkPriceData{
+		Ticker:       types.Ticker(f.ticker).String(),
 		ProviderName: f.ProviderName(),
 		Symbol:       f.Symbol(),
 		AssetPair:    pair,
