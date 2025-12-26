@@ -152,8 +152,8 @@ func apiCmd(cmd *cli.Cmd) {
 		httpSrv := &http.Server{
 			Addr:         *grpcWebListenAddress,
 			Handler:      handlerWithCors.Handler(grpcWebMux),
-			ReadTimeout:  2 * time.Second,
-			WriteTimeout: 2 * time.Second,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second,
 			IdleTimeout:  10 * time.Second,
 		}
 
