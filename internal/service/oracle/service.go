@@ -286,9 +286,9 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan types.Pric
 				return
 			}
 
-			/*if success := s.broadcastToClient(ctx, cosmosClient, msgs, currentMeta, pullIntervalChain, maxRetries, batchLog); success {
+			if success := s.broadcastToClient(ctx, cosmosClient, msgs, currentMeta, pullIntervalChain, maxRetries, batchLog); success {
 				return
-			}*/
+			}
 		}
 	}
 

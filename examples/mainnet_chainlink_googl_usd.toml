@@ -1,0 +1,5 @@
+provider = "chainlink"
+feedId = "0x00039d9e45394f473ab1f050a1b963e6b05351e52d71e507509ada0c95ed75b8"
+ticker = "GOOGL/USD"
+pullInterval = "1s"
+oracleType = "Chainlink"

@@ -1,0 +1,5 @@
+provider = "chainlink"
+feedId = "0x000890039996f52efbfa66e193d077fd4aa6fa12009688f7f6606a64cc0c25ad"
+ticker = "TSLA/USD"
+pullInterval = "1s"
+oracleType = "Chainlink"
