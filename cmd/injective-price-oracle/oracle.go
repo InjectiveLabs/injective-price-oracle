@@ -25,7 +25,7 @@ import (
 	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/chainlink"
 	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/stork"
 	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/types"
-	"github.com/InjectiveLabs/injective-price-oracle/pipeline"
+	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/utils"
 )
 
 type CosmosConfig struct {
@@ -357,7 +357,7 @@ func oracleCmd(cmd *cli.Cmd) {
 				}
 
 				connectIn = 5 * time.Second
-				conn, err := pipeline.ConnectWebSocket(ctx, *websocketUrl, *websocketHeader, svcoracle.MaxRetriesReConnectWebSocket)
+				conn, err := utils.ConnectWebSocket(ctx, *websocketUrl, *websocketHeader, svcoracle.MaxRetriesReConnectWebSocket)
 				if err != nil {
 					log.WithError(err).Errorln("failed to connect to WebSocket")
 					continue
