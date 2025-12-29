@@ -1,8 +1,5 @@
-# Chainlink v3 report - for crypto assets (BTC/USD)
 provider = "chainlink"
 feedId = "0x00023496426b520583ae20a66d80484e0fc18544866a5b0bfee15ec771963274"
 ticker = "BTC/USD"
 pullInterval = "1s"
-oracleType = "ChainlinkDataStreams"
-reportVersion = "v3"  # v3 for crypto assets
-
+oracleType = "Chainlink"
