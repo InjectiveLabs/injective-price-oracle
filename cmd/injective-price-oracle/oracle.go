@@ -313,8 +313,6 @@ func oracleCmd(cmd *cli.Cmd) {
 			log.Infoln("creating Chainlink Data Streams client")
 			log.Infoln("Chainlink Data Streams WS URL:", cfg.WsURL)
 			log.Infoln("Chainlink Data Streams Feeds:", feeds)
-			log.Infoln("Chainlink Data Streams API Key:", cfg.ApiKey)
-			log.Infoln("Chainlink Data Streams API Secret:", cfg.ApiSecret)
 
 			client, err := streams.New(cfg)
 			if err != nil {

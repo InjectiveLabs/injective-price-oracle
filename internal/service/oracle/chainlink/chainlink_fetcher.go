@@ -3,7 +3,6 @@ package chainlink
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
@@ -12,8 +11,6 @@ import (
 	"github.com/pkg/errors"
 	streams "github.com/smartcontractkit/data-streams-sdk/go"
 	"github.com/smartcontractkit/data-streams-sdk/go/feed"
-	"github.com/smartcontractkit/data-streams-sdk/go/report"
-	v3 "github.com/smartcontractkit/data-streams-sdk/go/report/v3"
 )
 
 type ChainLinkFetcher interface {
@@ -111,41 +108,20 @@ func (f *chainlinkFetcher) startReadingReports(ctx context.Context) error {
 			continue
 		}
 
-		now := time.Now()
-
-		// TODO this needs to be decoded per feedID config???
-		decodedReport, decodeErr := report.Decode[v3.Data](reportResponse.FullReport)
-		if decodeErr != nil {
-			f.logger.WithError(decodeErr).Warningln("failed to decode Chainlink report")
-			metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
-				s.Count("feed_provider.chainlink.decode_error.count", 1, tagSpec, 1)
-			}, f.svcTags)
-			continue
-		}
-
-		// Calculate latency
-		ts := time.Unix(int64(decodedReport.Data.ObservationsTimestamp), 0)
-		latency := now.Sub(ts) / time.Millisecond
+		feedIDStr := reportResponse.FeedID.String()
 
 		metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
-			s.Timing("feed_provider.chainlink.price_receive.latency", latency, tagSpec, 1)
 			s.Count("feed_provider.chainlink.price_receive.count", 1, tagSpec, 1)
 		}, f.svcTags)
 
 		// Log the decoded report
 		f.logger.WithFields(log.Fields{
-			"feedID":                reportResponse.FeedID.String(),
-			"observationsTimestamp": decodedReport.Data.ObservationsTimestamp,
-			"benchmarkPrice":        decodedReport.Data.BenchmarkPrice.String(),
-			"bid":                   decodedReport.Data.Bid.String(),
-			"ask":                   decodedReport.Data.Ask.String(),
-			"validFromTimestamp":    decodedReport.Data.ValidFromTimestamp,
-			"expiresAt":             decodedReport.Data.ExpiresAt,
-		}).Infoln("received Chainlink report")
+			"feedID": reportResponse.FeedID.String(),
+		}).Debugln("received Chainlink report")
 
 		// Create complete PriceData
 		priceData := &oracletypes.ChainlinkReport{
-			FeedId:                common.Hex2Bytes(reportResponse.FeedID.String()),
+			FeedId:                common.Hex2Bytes(feedIDStr),
 			FullReport:            reportResponse.FullReport,
 			ValidFromTimestamp:    reportResponse.ValidFromTimestamp,
 			ObservationsTimestamp: reportResponse.ObservationsTimestamp,
@@ -153,7 +129,7 @@ func (f *chainlinkFetcher) startReadingReports(ctx context.Context) error {
 
 		// Update the latest prices
 		f.mu.Lock()
-		f.latestPrices[reportResponse.FeedID.String()] = priceData
+		f.latestPrices[feedIDStr] = priceData
 		f.mu.Unlock()
 
 		metrics.CustomReport(func(s metrics.Statter, tagSpec []string) {
