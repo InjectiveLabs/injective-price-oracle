@@ -16,6 +16,9 @@ var _ = API("PriceOracle", func() {
 			URI("https://k8s.mainnet.eu.price-oracle.injective.network")
 		})
 		Host("testnet", func() {
+			URI("https://k8s.testnet.price-oracle.injective.network")
+		})
+		Host("staging-mainnet", func() {
 			URI("https://k8s.mainnet.staging.price-oracle.injective.network")
 		})
 	})
