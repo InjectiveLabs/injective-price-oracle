@@ -15,6 +15,7 @@ import (
 	api_health_rpc "github.com/InjectiveLabs/injective-price-oracle/api/gen/grpc/health/pb"
 	api_health "github.com/InjectiveLabs/injective-price-oracle/api/gen/grpc/health/server"
 	api_health_service "github.com/InjectiveLabs/injective-price-oracle/api/gen/health"
+	api_health_http_server "github.com/InjectiveLabs/injective-price-oracle/api/gen/http/health/server"
 	api_http_server "github.com/InjectiveLabs/injective-price-oracle/api/gen/http/injective_price_oracle_api/server"
 	swaggerHTTPServer "github.com/InjectiveLabs/injective-price-oracle/api/gen/http/swagger/server"
 	api_server_service "github.com/InjectiveLabs/injective-price-oracle/api/gen/injective_price_oracle_api"
@@ -102,6 +103,18 @@ func apiCmd(cmd *cli.Cmd) {
 		)
 
 		api_health_rpc.RegisterHealthServer(grpcServer, grpcHealthRouter)
+
+		// http health api
+		healthHTTPRouter := api_health_http_server.New(
+			api_health_service.NewEndpoints(healthSvc),
+			grpcWebMux,
+			goahttp.RequestDecoder,
+			goahttp.ResponseEncoder,
+			newErrorHandler(log.DefaultLogger),
+			nil,
+		)
+
+		api_health_http_server.Mount(grpcWebMux, healthHTTPRouter)
 
 		// http api
 		apiRouter := api_http_server.New(
