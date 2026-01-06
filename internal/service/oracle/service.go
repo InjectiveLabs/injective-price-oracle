@@ -491,12 +491,16 @@ func (s *oracleSvc) broadcastToClient(
 			}, s.svcTags)
 		}
 
+		diff := time.Since(ts)
+
 		batchLog.WithFields(log.Fields{
 			"cosmosClient": cosmosClient.ClientContext().From,
 			"height":       txResp.TxResponse.Height,
 			"hash":         txResp.TxResponse.TxHash,
-			"duration":     time.Since(ts),
-		}).Infoln("sent Tx successfully in ", time.Since(ts))
+			"duration":     diff,
+		}).Infoln("sent Tx successfully in ", diff)
+
+		metrics.Timer("price_oracle.execution_time", diff, s.svcTags)
 		return true
 	}
 
