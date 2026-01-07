@@ -1510,6 +1510,8 @@ github.com/InjectiveLabs/ibc-go/v8 v8.7.0-evm-comet1-inj h1:yuSodqSSgIwSQyLUJ45j
 github.com/InjectiveLabs/ibc-go/v8 v8.7.0-evm-comet1-inj/go.mod h1:JnZjgZ9KyhXp3HFjtGXkM2ByyPfJWjAnz2KMCmFK3po=
 github.com/InjectiveLabs/metrics v0.0.10 h1:BoOwXnCtRRIPmq06jcI20pXZYE758eusaCI5jDOoN4U=
 github.com/InjectiveLabs/metrics v0.0.10/go.mod h1:eYu++0DVUjk/jjV9WgvCo8gQU+16Yoyhp1iu+ghKNME=
+github.com/InjectiveLabs/metrics v0.0.21 h1:/oEOJryuY+34+6pIYO+EvJVn7MV267OD1v9MkyM2Cpw=
+github.com/InjectiveLabs/metrics v0.0.21/go.mod h1:oDwGiKYrI9EplQDJzzBwvKsdCNyvGeTonxb91HauZmk=
 github.com/InjectiveLabs/sdk-go v1.58.0 h1:n5bPcZMYP1o4uJbvtqsknqvhu8Ff0l8f72D1jdA99ig=
 github.com/InjectiveLabs/sdk-go v1.58.0/go.mod h1:/LNZhVsHMpb3YUnWcLu7+p3fUUz9XLxhEzFfebFR9Mg=
 github.com/InjectiveLabs/suplog v1.3.4 h1:Ex3qj19FkKjlJVOpqEzLnPFlFtuV3FV4zR5w9JnG2/0=
@@ -3307,6 +3309,8 @@ github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RR
 github.com/mitchellh/osext v0.0.0-20151018003038-5e2d6d41470f/go.mod h1:OkQIRizQZAeMln+1tSwduZz7+Af5oFlKirV/MSYes2A=
 github.com/mitchellh/reflectwalk v1.0.0/go.mod h1:mSTlrgnPZtwu0c4WaC2kGObEpuNDbx0jmZXqmk4esnw=
 github.com/mitchellh/reflectwalk v1.0.2/go.mod h1:mSTlrgnPZtwu0c4WaC2kGObEpuNDbx0jmZXqmk4esnw=
+github.com/mixpanel/mixpanel-go v1.2.1 h1:iykbHKomTJjVoWU95Vt1sjZy4HLt8UOYacMEEEMFBok=
+github.com/mixpanel/mixpanel-go v1.2.1/go.mod h1:mPGaNhBoZMJuLu8k7Y1KhU5n8Vw13rxQZZjHj+b9RLk=
 github.com/mmcloughlin/addchain v0.4.0 h1:SobOdjm2xLj1KkXN5/n0xTIWyZA2+s99UCY1iPfkHRY=
 github.com/mmcloughlin/addchain v0.4.0/go.mod h1:A86O+tHqZLMNO4w6ZZ4FlVQEadcoqkyU72HC5wJ4RlU=
 github.com/mmcloughlin/profile v0.1.1/go.mod h1:IhHD7q1ooxgwTgjxQYkACGA77oFTDdFVejUS1/tS/qU=
