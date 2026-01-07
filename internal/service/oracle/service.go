@@ -104,7 +104,7 @@ func (s *oracleSvc) Start(ctx context.Context) (err error) {
 		for ticker, pricePuller := range s.pricePullers {
 			switch pricePuller.Provider() {
 			case types.FeedProviderStork, types.FeedProviderChainlink:
-				go s.processSetPriceFeed(ticker, pricePuller, dataC)
+				go s.processSetPriceFeed(ctx, ticker, pricePuller, dataC)
 			default:
 				s.logger.WithField("provider", pricePuller.Provider()).Warningln("unsupported price feed provider")
 			}
@@ -133,7 +133,7 @@ func (s *oracleSvc) processSetPriceFeed(ctx context.Context, ticker string, pric
 			feedLogger.Infoln("context cancelled, stopping price feed")
 			return
 		case <-t.C:
-			var result *PriceData
+			var result types.PriceData
 			var err error
 
 			for i := 0; i < maxRetriesPerInterval; i++ {
@@ -214,7 +214,7 @@ func composeChainlinkOracleMsgs(cosmosClient chainclient.ChainClient, priceBatch
 
 	reports := make([]*oracletypes.ChainlinkReport, 0)
 	for _, pData := range priceBatch {
-		if pData.GetOracleType() != oracletypes.OracleType_Chainlink {
+		if pData.GetOracleType() != oracletypes.OracleType_ChainlinkDataStreams {
 			continue
 		}
 
@@ -251,7 +251,7 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan types.Pric
 	expirationTimer := time.NewTimer(commitPriceBatchTimeLimit)
 	defer expirationTimer.Stop()
 
-	pricesBatch := make(map[string]*PriceData)
+	pricesBatch := make(map[string]types.PriceData)
 	pricesMeta := make(map[string]int)
 
 	resetBatch := func() (map[string]types.PriceData, map[string]int) {
@@ -322,7 +322,7 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan types.Pric
 						continue
 					}
 				}
-			} else if priceData.GetOracleType() == oracletypes.OracleType_Chainlink {
+			} else if priceData.GetOracleType() == oracletypes.OracleType_ChainlinkDataStreams {
 				if chainlinkData, ok := priceData.(*chainlink.ChainlinkPriceData); ok {
 					if chainlinkData.ChainlinkReport.FeedId == nil || chainlinkData.ChainlinkReport == nil {
 						s.logger.WithFields(log.Fields{
