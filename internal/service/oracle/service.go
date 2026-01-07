@@ -116,7 +116,7 @@ func (s *oracleSvc) Start(ctx context.Context) (err error) {
 	return
 }
 
-func (s *oracleSvc) processSetPriceFeed(ticker string, pricePuller types.PricePuller, dataC chan<- types.PriceData) {
+func (s *oracleSvc) processSetPriceFeed(ctx context.Context, ticker string, pricePuller types.PricePuller, dataC chan<- types.PriceData) {
 	feedLogger := s.logger.WithFields(log.Fields{
 		"ticker":   ticker,
 		"provider": pricePuller.ProviderName(),
@@ -125,36 +125,38 @@ func (s *oracleSvc) processSetPriceFeed(ticker string, pricePuller types.PricePu
 	symbol := pricePuller.Symbol()
 
 	t := time.NewTimer(5 * time.Second)
+	defer t.Stop()
+
 	for {
 		select {
+		case <-ctx.Done():
+			feedLogger.Infoln("context cancelled, stopping price feed")
+			return
 		case <-t.C:
-			ctx, cancelFn := context.WithTimeout(context.Background(), maxRespTime)
-			defer cancelFn()
+			var result *PriceData
+			var err error
 
-			result, err := pricePuller.PullPrice(ctx)
+			for i := 0; i < maxRetriesPerInterval; i++ {
+				requestCtx, cancelFn := context.WithTimeout(ctx, maxRespTime)
+				result, err = pricePuller.PullPrice(requestCtx)
+				cancelFn()
 
-			if err != nil {
-				metrics.ReportFuncError(s.svcTags)
-				feedLogger.WithError(err).Warningln("retrying PullPrice after error")
-
-				for i := 0; i < maxRetriesPerInterval; i++ {
-					if result, err = pricePuller.PullPrice(ctx); err != nil {
-						time.Sleep(time.Second)
-						continue
-					}
+				if err == nil {
 					break
 				}
 
-				if err != nil {
-					metrics.ReportFuncCallAndTimingWithErr(s.svcTags)(&err)
-					feedLogger.WithFields(log.Fields{
-						"symbol":  symbol,
-						"retries": maxRetriesPerInterval,
-					}).WithError(err).Errorln("failed to fetch price")
+				time.Sleep(100 * time.Millisecond)
+			}
 
-					t.Reset(pricePuller.Interval())
-					continue
-				}
+			if err != nil {
+				metrics.ReportFuncCallAndTimingWithErr(s.svcTags)(&err)
+				feedLogger.WithFields(log.Fields{
+					"symbol":  symbol,
+					"retries": maxRetriesPerInterval,
+				}).WithError(err).Errorln("failed to fetch price")
+
+				t.Reset(pricePuller.Interval())
+				continue
 			}
 
 			if result != nil {
@@ -168,9 +170,9 @@ func (s *oracleSvc) processSetPriceFeed(ticker string, pricePuller types.PricePu
 
 const (
 	commitPriceBatchTimeLimit = 5 * time.Second
+	chainMaxTimeLimit         = 3 * time.Second
 	commitPriceBatchSizeLimit = 100
-	maxRetries                = 6
-	chainMaxTimeLimit         = 5 * time.Second
+	maxRetries                = 3
 )
 
 var pullIntervalChain = 500 * time.Millisecond
@@ -247,7 +249,9 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan types.Pric
 	defer doneFn()
 
 	expirationTimer := time.NewTimer(commitPriceBatchTimeLimit)
-	pricesBatch := make(map[string]types.PriceData)
+	defer expirationTimer.Stop()
+
+	pricesBatch := make(map[string]*PriceData)
 	pricesMeta := make(map[string]int)
 
 	resetBatch := func() (map[string]types.PriceData, map[string]int) {
@@ -294,6 +298,11 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan types.Pric
 
 	for {
 		select {
+		case <-ctx.Done():
+			s.logger.Infoln("context cancelled, stopping commitSetPrices")
+			prevBatch, prevMeta := resetBatch()
+			submitBatch(prevBatch, prevMeta, false)
+			return
 		case priceData, ok := <-dataC:
 			if !ok {
 				s.logger.Infoln("stopping committing prices")
@@ -386,12 +395,16 @@ func (s *oracleSvc) broadcastToClient(
 			}, s.svcTags)
 		}
 
+		diff := time.Since(ts)
+
 		batchLog.WithFields(log.Fields{
 			"cosmosClient": cosmosClient.ClientContext().From,
 			"height":       txResp.TxResponse.Height,
 			"hash":         txResp.TxResponse.TxHash,
-			"duration":     time.Since(ts),
-		}).Infoln("sent Tx successfully in ", time.Since(ts))
+			"duration":     diff,
+		}).Infoln("sent Tx successfully in ", diff)
+
+		metrics.Timer("price_oracle.execution_time", diff, s.svcTags)
 		return true
 	}
 
