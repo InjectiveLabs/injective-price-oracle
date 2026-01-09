@@ -7,7 +7,6 @@ import (
 	"github.com/InjectiveLabs/metrics"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	log "github.com/InjectiveLabs/suplog"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	streams "github.com/smartcontractkit/data-streams-sdk/go"
 	"github.com/smartcontractkit/data-streams-sdk/go/feed"
@@ -116,12 +115,11 @@ func (f *chainlinkFetcher) startReadingReports(ctx context.Context) error {
 
 		// Log the decoded report
 		f.logger.WithFields(log.Fields{
-			"feedID": reportResponse.FeedID.String(),
+			"feedID": feedIDStr,
 		}).Debugln("received Chainlink report")
 
-		// Create complete PriceData
 		priceData := &oracletypes.ChainlinkReport{
-			FeedId:                common.Hex2Bytes(feedIDStr),
+			FeedId:                reportResponse.FeedID[:],
 			FullReport:            reportResponse.FullReport,
 			ValidFromTimestamp:    reportResponse.ValidFromTimestamp,
 			ObservationsTimestamp: reportResponse.ObservationsTimestamp,
