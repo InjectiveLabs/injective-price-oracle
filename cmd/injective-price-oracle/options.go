@@ -251,29 +251,26 @@ func initStorkOracleWebSocketOptions(
 	})
 }
 
-func iniAPIOptions(
+func initChainlinkDataStreamsOptions(
 	cmd *cli.Cmd,
-	grpcWebListenAddress **string,
-	grpcWebRequestTimeout **string,
-	apiKey **string,
+	chainlinkWsURL **string,
+	chainlinkAPIKey **string,
+	chainlinkAPISecret **string,
 ) {
-	*grpcWebListenAddress = cmd.String(cli.StringOpt{
-		Name:   "grpc-web-listen-address",
-		Desc:   "GRPC_WEB_LISTEN_ADDRESS,",
-		EnvVar: "GRPC_WEB_LISTEN_ADDRESS",
-		Value:  "0.0.0.0:9924",
+	*chainlinkWsURL = cmd.String(cli.StringOpt{
+		Name:   "chainlink-ws-url",
+		Desc:   "Chainlink Data Streams WebSocket URL",
+		EnvVar: "CHAINLINK_WS_URL",
+		Value:  "wss://ws.testnet-dataengine.chain.link",
 	})
-	*grpcWebRequestTimeout = cmd.String(cli.StringOpt{
-		Name:   "grpc-web-request-timeout",
-		Desc:   "GRPC web request timeout duration",
-		EnvVar: "GRPC_WEB_REQUEST_TIMEOUT",
-		Value:  "10s",
+	*chainlinkAPIKey = cmd.String(cli.StringOpt{
+		Name:   "chainlink-api-key",
+		Desc:   "Chainlink Data Streams API Key",
+		EnvVar: "CHAINLINK_API_KEY",
 	})
-	*apiKey = cmd.String(cli.StringOpt{
-		Name:   "api-key",
-		Desc:   "API key for authenticating requests to the price oracle API",
-		EnvVar: "API_KEY",
-		Value:  "",
+	*chainlinkAPISecret = cmd.String(cli.StringOpt{
+		Name:   "chainlink-api-secret",
+		Desc:   "Chainlink Data Streams API Secret",
+		EnvVar: "CHAINLINK_API_SECRET",
 	})
-
 }

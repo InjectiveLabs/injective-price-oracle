@@ -25,7 +25,6 @@ FROM alpine:3.22.2
 RUN apk add --no-cache ca-certificates aws-cli curl tree mongodb-tools nodejs npm
 RUN rm -rf /var/cache/apk/*
 COPY --from=builder /go/bin/* /usr/local/bin/
-COPY --from=builder /src/swagger /apps/data/swagger
 
 #configure container
 VOLUME /apps/data
