@@ -468,7 +468,10 @@ func (s *oracleSvc) broadcastToClientWithDeadline(
 
 	go func() {
 		success := s.broadcastToClient(ctx, cosmosClient, msgs, currentMeta, pullIntervalChain, maxRetries, batchLog)
-		done <- success
+		select {
+		case done <- success:
+		default:
+		}
 	}()
 
 	select {
@@ -478,10 +481,12 @@ func (s *oracleSvc) broadcastToClientWithDeadline(
 		batchLog.WithField("client", cosmosClient.ClientContext().From).
 			Warningln("broadcast to client exceeded deadline, forcing stop")
 		metrics.ReportFuncError(s.svcTags)
+
 		return false
 	case <-ctx.Done():
 		batchLog.WithField("client", cosmosClient.ClientContext().From).
 			Infoln("context cancelled during broadcast")
+
 		return false
 	}
 }
