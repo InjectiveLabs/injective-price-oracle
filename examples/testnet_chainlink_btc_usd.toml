@@ -1,0 +1,5 @@
+provider = "chainlink"
+feedId = "0x00037da06d56d083fe599397a4769a042d63aa73dc4ef57709d31e9971a5b439"
+ticker = "BTC/USD"
+pullInterval = "1s"
+oracleType = "Chainlink"

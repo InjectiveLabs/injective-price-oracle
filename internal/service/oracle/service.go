@@ -7,17 +7,17 @@ import (
 	"strings"
 	"time"
 
-	"cosmossdk.io/math"
-
-	log "github.com/InjectiveLabs/suplog"
-	cosmtypes "github.com/cosmos/cosmos-sdk/types"
-	"github.com/pkg/errors"
-	"github.com/shopspring/decimal"
-
 	"github.com/InjectiveLabs/metrics"
 	exchangetypes "github.com/InjectiveLabs/sdk-go/chain/exchange/types/v2"
 	oracletypes "github.com/InjectiveLabs/sdk-go/chain/oracle/types"
 	chainclient "github.com/InjectiveLabs/sdk-go/client/chain"
+	log "github.com/InjectiveLabs/suplog"
+	cosmtypes "github.com/cosmos/cosmos-sdk/types"
+	"github.com/pkg/errors"
+
+	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/chainlink"
+	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/stork"
+	"github.com/InjectiveLabs/injective-price-oracle/internal/service/oracle/types"
 )
 
 type Service interface {
@@ -25,118 +25,36 @@ type Service interface {
 	Close()
 }
 
-type PricePuller interface {
-	Provider() FeedProvider
-	ProviderName() string
-	Symbol() string
-	Interval() time.Duration
-
-	// PullPrice method must be implemented in order to get a price
-	// from external source, handled by PricePuller.
-	PullPrice(ctx context.Context) (priceData *PriceData, err error)
-	OracleType() oracletypes.OracleType
-}
-
-type FeedConfig struct {
-	ProviderName      string `toml:"provider"`
-	Ticker            string `toml:"ticker"`
-	PullInterval      string `toml:"pullInterval"`
-	ObservationSource string `toml:"observationSource"`
-	OracleType        string `toml:"oracleType"`
-}
-
 type oracleSvc struct {
-	pricePullers        map[string]PricePuller
+	pricePullers        map[string]types.PricePuller
 	supportedPriceFeeds map[string]PriceFeedConfig
 	cosmosClients       []chainclient.ChainClient
 	exchangeQueryClient exchangetypes.QueryClient
 	oracleQueryClient   oracletypes.QueryClient
-	config              *StorkConfig
 
 	logger  log.Logger
 	svcTags metrics.Tags
 }
 
 const (
-	maxRespTime                  = 3 * time.Second
+	maxRespTime                  = 15 * time.Second
 	maxRetriesPerInterval        = 3
 	MaxRetriesReConnectWebSocket = 5
 )
 
-var (
-	zeroPrice = decimal.Decimal{}
-)
-
-type FeedProvider string
-
-func (f FeedProvider) String() string {
-	return string(f)
-}
-
-const (
-	FeedProviderDynamic FeedProvider = "_"
-	FeedProviderBinance FeedProvider = "binance"
-	FeedProviderStork   FeedProvider = "stork"
-)
-
 type PriceFeedConfig struct {
 	Symbol        string
-	FeedProvider  FeedProvider
+	FeedProvider  types.FeedProvider
 	PullInterval  time.Duration
-	DynamicConfig *FeedConfig
-}
-
-// getEnabledFeeds returns a mapping between ticker and price feeder config, this will query
-// the chain to fetch only those configs where current Cosmos sender is authorized as a relayer.
-func (s *oracleSvc) getEnabledFeeds(cosmosClient chainclient.ChainClient) map[string]PriceFeedConfig {
-	metrics.ReportFuncCall(s.svcTags)
-	doneFn := metrics.ReportFuncTiming(s.svcTags)
-	defer doneFn()
-
-	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancelFn()
-
-	feeds := make(map[string]PriceFeedConfig)
-
-	sender := strings.ToLower(cosmosClient.FromAddress().String())
-	res, err := s.oracleQueryClient.PriceFeedPriceStates(ctx, &oracletypes.QueryPriceFeedPriceStatesRequest{})
-	if err != nil {
-		metrics.ReportFuncError(s.svcTags)
-		return nil
-	}
-
-	for _, priceFeedState := range res.PriceStates {
-		var found bool
-		for _, relayer := range priceFeedState.Relayers {
-			if strings.ToLower(relayer) == sender {
-				found = true
-			}
-		}
-
-		if !found {
-			continue
-		}
-
-		ticker := fmt.Sprintf("%s/%s", priceFeedState.Base, priceFeedState.Quote)
-		if feed, ok := s.supportedPriceFeeds[ticker]; ok {
-			feeds[ticker] = feed
-		} else {
-			s.logger.WithFields(log.Fields{
-				"sender": sender,
-			}).Warningf("current sender is authorized in %s feed, but no corresponding feed config loaded", ticker)
-		}
-	}
-
-	s.logger.Infof("got %d enabled price feeds", len(feeds))
-
-	return feeds
+	DynamicConfig *types.FeedConfig
 }
 
 func NewService(
 	_ context.Context,
 	cosmosClients []chainclient.ChainClient,
-	feedConfigs map[string]*FeedConfig,
-	storkFetcher StorkFetcher,
+	feedConfigs map[string]*types.FeedConfig,
+	storkFetcher stork.Fetcher,
+	chainlinkFetcher chainlink.Fetcher,
 ) (Service, error) {
 	svc := &oracleSvc{
 		cosmosClients: cosmosClients,
@@ -146,34 +64,28 @@ func NewService(
 		},
 	}
 
-	// supportedPriceFeeds is a mapping between price ticker and its pricefeed config
-	svc.supportedPriceFeeds = map[string]PriceFeedConfig{}
-	for _, feedCfg := range feedConfigs {
-		svc.supportedPriceFeeds[feedCfg.Ticker] = PriceFeedConfig{
-			FeedProvider:  FeedProviderDynamic,
-			DynamicConfig: feedCfg,
-		}
-	}
-
-	svc.pricePullers = map[string]PricePuller{}
+	svc.pricePullers = map[string]types.PricePuller{}
 	for _, feedCfg := range feedConfigs {
 		switch feedCfg.ProviderName {
-		case FeedProviderStork.String():
+		case types.FeedProviderStork.String():
 			ticker := feedCfg.Ticker
-			pricePuller, err := NewStorkPriceFeed(storkFetcher, feedCfg)
+			pricePuller, err := stork.NewStorkPriceFeed(storkFetcher, feedCfg)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to init stork price feed for ticker %s", ticker)
 				return nil, err
 			}
 			svc.pricePullers[ticker] = pricePuller
-		default: // TODO this should be replaced with correct providers
+		case types.FeedProviderChainlink.String():
 			ticker := feedCfg.Ticker
-			pricePuller, err := NewDynamicPriceFeed(feedCfg)
+			pricePuller, err := chainlink.NewChainlinkPriceFeed(chainlinkFetcher, feedCfg)
 			if err != nil {
-				err = errors.Wrapf(err, "failed to init dynamic price feed for ticker %s", ticker)
+				err = errors.Wrapf(err, "failed to init chainlink price feed for ticker %s", ticker)
 				return nil, err
 			}
 			svc.pricePullers[ticker] = pricePuller
+		default:
+			// Unsupported provider
+			svc.logger.WithField("provider", feedCfg.ProviderName).Warningln("unsupported feed provider, skipping")
 		}
 	}
 
@@ -187,11 +99,11 @@ func (s *oracleSvc) Start(ctx context.Context) (err error) {
 	if len(s.pricePullers) > 0 {
 		s.logger.Infoln("starting pullers for", len(s.pricePullers), "feeds")
 
-		dataC := make(chan *PriceData, len(s.pricePullers))
+		dataC := make(chan types.PriceData, len(s.pricePullers))
 
 		for ticker, pricePuller := range s.pricePullers {
 			switch pricePuller.Provider() {
-			case FeedProviderBinance, FeedProviderStork, FeedProviderDynamic:
+			case types.FeedProviderStork, types.FeedProviderChainlink:
 				go s.processSetPriceFeed(ctx, ticker, pricePuller, dataC)
 			default:
 				s.logger.WithField("provider", pricePuller.Provider()).Warningln("unsupported price feed provider")
@@ -204,7 +116,7 @@ func (s *oracleSvc) Start(ctx context.Context) (err error) {
 	return
 }
 
-func (s *oracleSvc) processSetPriceFeed(ctx context.Context, ticker string, pricePuller PricePuller, dataC chan<- *PriceData) {
+func (s *oracleSvc) processSetPriceFeed(ctx context.Context, ticker string, pricePuller types.PricePuller, dataC chan<- types.PriceData) {
 	feedLogger := s.logger.WithFields(log.Fields{
 		"ticker":   ticker,
 		"provider": pricePuller.ProviderName(),
@@ -221,7 +133,7 @@ func (s *oracleSvc) processSetPriceFeed(ctx context.Context, ticker string, pric
 			feedLogger.Infoln("context cancelled, stopping price feed")
 			return
 		case <-t.C:
-			var result *PriceData
+			var result types.PriceData
 			var err error
 
 			for i := 0; i < maxRetriesPerInterval; i++ {
@@ -265,73 +177,20 @@ const (
 
 var pullIntervalChain = 500 * time.Millisecond
 
-func composePriceFeedMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (results []cosmtypes.Msg) {
-	msg := &oracletypes.MsgRelayPriceFeedPrice{
-		Sender: cosmosClient.FromAddress().String(),
-	}
-
-	for _, priceData := range priceBatch {
-		if priceData.OracleType != oracletypes.OracleType_PriceFeed {
-			continue
-		}
-
-		msg.Base = append(msg.Base, priceData.Ticker.Base())
-		msg.Quote = append(msg.Quote, priceData.Ticker.Quote())
-		msg.Price = append(msg.Price, math.LegacyMustNewDecFromStr(priceData.Price.String()))
-	}
-
-	if len(msg.Base) > 0 {
-		return []cosmtypes.Msg{msg}
-	}
-
-	return nil
-}
-
-func composeProviderFeedMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
-	if len(priceBatch) == 0 {
-		return nil
-	}
-
-	providerToMsg := make(map[string]*oracletypes.MsgRelayProviderPrices)
-	for _, priceData := range priceBatch {
-		if priceData.OracleType != oracletypes.OracleType_Provider {
-			continue
-		}
-
-		provider := strings.ToLower(priceData.ProviderName)
-		msg, exist := providerToMsg[provider]
-		if !exist {
-			msg = &oracletypes.MsgRelayProviderPrices{
-				Sender:   cosmosClient.FromAddress().String(),
-				Provider: priceData.ProviderName,
-			}
-			providerToMsg[provider] = msg
-		}
-
-		msg.Symbols = append(msg.Symbols, priceData.Symbol)
-		msg.Prices = append(msg.Prices, math.LegacyMustNewDecFromStr(priceData.Price.String()))
-	}
-
-	for _, msg := range providerToMsg {
-		result = append(result, msg)
-	}
-	return result
-}
-
-func composeStorkOracleMsgs(cosmosClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
+func composeStorkOracleMsgs(cosmosClient chainclient.ChainClient, priceBatch []types.PriceData) (result []cosmtypes.Msg) {
 	if len(priceBatch) == 0 {
 		return nil
 	}
 
 	assetPairs := make([]*oracletypes.AssetPair, 0)
 	for _, pData := range priceBatch {
-		var priceData = pData
-		if priceData.OracleType != oracletypes.OracleType_Stork {
+		if pData.GetOracleType() != oracletypes.OracleType_Stork {
 			continue
 		}
 
-		if priceData.AssetPair != nil {
-			assetPairs = append(assetPairs, priceData.AssetPair)
+		if chainlinkData, ok := pData.(*stork.StorkPriceData); ok {
+			assetPair := chainlinkData.AssetPair
+			assetPairs = append(assetPairs, assetPair)
 		}
 	}
 
@@ -348,14 +207,43 @@ func composeStorkOracleMsgs(cosmosClient chainclient.ChainClient, priceBatch []*
 	return result
 }
 
-func composeMsgs(cosmoClient chainclient.ChainClient, priceBatch []*PriceData) (result []cosmtypes.Msg) {
-	result = append(result, composePriceFeedMsgs(cosmoClient, priceBatch)...)
-	result = append(result, composeProviderFeedMsgs(cosmoClient, priceBatch)...)
-	result = append(result, composeStorkOracleMsgs(cosmoClient, priceBatch)...)
+func composeChainlinkOracleMsgs(cosmosClient chainclient.ChainClient, priceBatch []types.PriceData) (result []cosmtypes.Msg) {
+	if len(priceBatch) == 0 {
+		return nil
+	}
+
+	reports := make([]*oracletypes.ChainlinkReport, 0)
+	for _, pData := range priceBatch {
+		if pData.GetOracleType() != oracletypes.OracleType_ChainlinkDataStreams {
+			continue
+		}
+
+		if chainlinkData, ok := pData.(*chainlink.ChainlinkPriceData); ok {
+			report := chainlinkData.ChainlinkReport
+			reports = append(reports, report)
+		}
+	}
+
+	if len(reports) > 0 {
+		msg := &oracletypes.MsgRelayChainlinkPrices{
+			Sender:  cosmosClient.FromAddress().String(),
+			Reports: reports,
+		}
+
+		log.Debugf("chainlink reports: %d reports", len(reports))
+		result = append(result, msg)
+	}
+
 	return result
 }
 
-func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan *PriceData) {
+func composeMsgs(cosmoClient chainclient.ChainClient, priceBatch []types.PriceData) (result []cosmtypes.Msg) {
+	result = append(result, composeStorkOracleMsgs(cosmoClient, priceBatch)...)
+	result = append(result, composeChainlinkOracleMsgs(cosmoClient, priceBatch)...)
+	return result
+}
+
+func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan types.PriceData) {
 	metrics.ReportFuncCall(s.svcTags)
 	doneFn := metrics.ReportFuncTiming(s.svcTags)
 	defer doneFn()
@@ -363,20 +251,20 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan *PriceData
 	expirationTimer := time.NewTimer(commitPriceBatchTimeLimit)
 	defer expirationTimer.Stop()
 
-	pricesBatch := make(map[string]*PriceData)
+	pricesBatch := make(map[string]types.PriceData)
 	pricesMeta := make(map[string]int)
 
-	resetBatch := func() (map[string]*PriceData, map[string]int) {
+	resetBatch := func() (map[string]types.PriceData, map[string]int) {
 		expirationTimer.Reset(commitPriceBatchTimeLimit)
 
 		prev := pricesBatch
 		prevMeta := pricesMeta
-		pricesBatch = make(map[string]*PriceData)
+		pricesBatch = make(map[string]types.PriceData)
 		pricesMeta = make(map[string]int)
 		return prev, prevMeta
 	}
 
-	submitBatch := func(currentBatch map[string]*PriceData, currentMeta map[string]int, timeout bool) {
+	submitBatch := func(currentBatch map[string]types.PriceData, currentMeta map[string]int, timeout bool) {
 		if len(currentBatch) == 0 {
 			return
 		}
@@ -386,7 +274,7 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan *PriceData
 			"timeout":    timeout,
 		})
 
-		var priceBatch []*PriceData
+		var priceBatch []types.PriceData
 		for _, msg := range currentBatch {
 			priceBatch = append(priceBatch, msg)
 		}
@@ -422,25 +310,41 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan *PriceData
 				submitBatch(prevBatch, prevMeta, false)
 				return
 			}
-			if priceData.OracleType == oracletypes.OracleType_Stork {
-				if priceData.AssetPair == nil {
-					s.logger.WithFields(log.Fields{
-						"ticker":   priceData.Ticker,
-						"provider": priceData.ProviderName,
-					}).Debugln("got nil asset pair for stork oracle, skipping")
-					continue
+
+			// Validate based on oracle type
+			if priceData.GetOracleType() == oracletypes.OracleType_Stork {
+				if storkData, ok := priceData.(*stork.StorkPriceData); ok {
+					if storkData.AssetPair == nil {
+						s.logger.WithFields(log.Fields{
+							"ticker":   priceData.GetTicker(),
+							"provider": priceData.GetProviderName(),
+						}).Debugln("got nil asset pair for stork oracle, skipping")
+						continue
+					}
+				}
+			} else if priceData.GetOracleType() == oracletypes.OracleType_ChainlinkDataStreams {
+				if chainlinkData, ok := priceData.(*chainlink.ChainlinkPriceData); ok {
+					if chainlinkData.ChainlinkReport.FeedId == nil || chainlinkData.ChainlinkReport == nil {
+						s.logger.WithFields(log.Fields{
+							"ticker":   priceData.GetTicker(),
+							"provider": priceData.GetProviderName(),
+						}).Debugln("got invalid chainlink report data, skipping")
+						continue
+					}
 				}
 			} else {
-				if priceData.Price.IsZero() || priceData.Price.IsNegative() {
+				// For other oracle types, validate price
+				if priceData.GetPrice().IsZero() || priceData.GetPrice().IsNegative() {
 					s.logger.WithFields(log.Fields{
-						"ticker":   priceData.Ticker,
-						"provider": priceData.ProviderName,
+						"ticker":   priceData.GetTicker(),
+						"provider": priceData.GetProviderName(),
 					}).Debugln("got negative or zero price, skipping")
 					continue
 				}
 			}
-			pricesMeta[priceData.OracleType.String()]++
-			pricesBatch[priceData.OracleType.String()+":"+priceData.Symbol] = priceData
+
+			pricesMeta[priceData.GetOracleType().String()]++
+			pricesBatch[priceData.GetOracleType().String()+":"+priceData.GetSymbol()] = priceData
 
 			if len(pricesBatch) >= commitPriceBatchSizeLimit {
 				prevBatch, prevMeta := resetBatch()
