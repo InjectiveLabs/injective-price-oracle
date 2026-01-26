@@ -212,7 +212,7 @@ func (f *dynamicPriceFeed) PullPrice(ctx context.Context) (
 		}
 	}
 
-	runLogger.Infoln("PullPrice (pipeline run) done in", time.Since(ts))
+	runLogger.Debugln("PullPrice (pipeline run) done in", time.Since(ts))
 
 	return &PriceData{
 		Ticker:       Ticker(f.ticker),
