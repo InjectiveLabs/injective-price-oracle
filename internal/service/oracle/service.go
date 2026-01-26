@@ -402,7 +402,7 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan *PriceData
 				return
 			}
 
-			if success := s.broadcastToClient(ctx, cosmosClient, msgs, currentMeta, pullIntervalChain, maxRetries, batchLog); success {
+			if success := s.broadcastToClientWithDeadline(ctx, cosmosClient, msgs, currentMeta, pullIntervalChain, maxRetries, batchLog); success {
 				return
 			}
 		}
@@ -450,6 +450,44 @@ func (s *oracleSvc) commitSetPrices(ctx context.Context, dataC <-chan *PriceData
 			prevBatch, prevMeta := resetBatch()
 			submitBatch(prevBatch, prevMeta, true)
 		}
+	}
+}
+
+func (s *oracleSvc) broadcastToClientWithDeadline(
+	ctx context.Context,
+	cosmosClient chainclient.ChainClient,
+	msgs []cosmtypes.Msg,
+	currentMeta map[string]int,
+	pullIntervalChain time.Duration,
+	maxRetries uint32,
+	batchLog log.Logger,
+) bool {
+	deadline := 10 * time.Second
+
+	done := make(chan bool, 1)
+
+	go func() {
+		success := s.broadcastToClient(ctx, cosmosClient, msgs, currentMeta, pullIntervalChain, maxRetries, batchLog)
+		select {
+		case done <- success:
+		default:
+		}
+	}()
+
+	select {
+	case success := <-done:
+		return success
+	case <-time.After(deadline):
+		batchLog.WithField("client", cosmosClient.ClientContext().From).
+			Warningln("broadcast to client exceeded deadline, forcing stop")
+		metrics.ReportFuncError(s.svcTags)
+
+		return false
+	case <-ctx.Done():
+		batchLog.WithField("client", cosmosClient.ClientContext().From).
+			Infoln("context cancelled during broadcast")
+
+		return false
 	}
 }
 
