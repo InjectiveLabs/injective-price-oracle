@@ -53,31 +53,44 @@ func (s *apiSvc) Probe(ctx context.Context, payload *injectivepriceoracleapi.Pro
 		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("invalid feed config: %w", err))
 	}
 
-	pricePuller, err := NewDynamicPriceFeed(feedCfg)
-	if err != nil {
-		log.WithError(err).Errorln("failed to init new dynamic price feed")
-		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("failed to init new dynamic price feed: %w", err))
+	switch feedCfg.ProviderName {
+	case FeedProviderStork.String():
+		// Stork feeds don't pull price via observation source, just validate config
+		log.WithFields(log.Fields{
+			"provider": feedCfg.ProviderName,
+			"ticker":   feedCfg.Ticker,
+		}).Infoln("stork feed config validated successfully")
+		return &injectivepriceoracleapi.ProbeResponse{
+			Result: "ok",
+		}, nil
+
+	default:
+		pricePuller, err := NewDynamicPriceFeed(feedCfg)
+		if err != nil {
+			log.WithError(err).Errorln("failed to init new dynamic price feed")
+			return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("failed to init new dynamic price feed: %w", err))
+		}
+
+		pullerLogger := log.WithFields(log.Fields{
+			"provider_name": pricePuller.ProviderName(),
+			"symbol":        pricePuller.Symbol(),
+			"oracle_type":   pricePuller.OracleType().String(),
+		})
+
+		answer, err := pricePuller.PullPrice(ctx)
+		if err != nil {
+			pullerLogger.WithError(err).Errorln("failed to pull price")
+			return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("failed to pull price: %w", err))
+		}
+
+		if answer == nil {
+			return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("pull price returned empty result"))
+		}
+
+		return &injectivepriceoracleapi.ProbeResponse{
+			Result: answer.Price.String(),
+		}, nil
 	}
-
-	pullerLogger := log.WithFields(log.Fields{
-		"provider_name": pricePuller.ProviderName(),
-		"symbol":        pricePuller.Symbol(),
-		"oracle_type":   pricePuller.OracleType().String(),
-	})
-
-	answer, err := pricePuller.PullPrice(ctx)
-	if err != nil {
-		pullerLogger.WithError(err).Errorln("failed to pull price")
-		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("failed to pull price: %w", err))
-	}
-
-	if answer == nil {
-		return nil, injectivepriceoracleapi.MakeInternal(fmt.Errorf("pull price returned empty result"))
-	}
-
-	return &injectivepriceoracleapi.ProbeResponse{
-		Result: answer.Price.String(),
-	}, nil
 }
 
 func validateFeedConfig(feedCfg *FeedConfig) error {
@@ -93,7 +106,7 @@ func validateFeedConfig(feedCfg *FeedConfig) error {
 		return errors.New("ticker is empty in feed config")
 	}
 
-	if feedCfg.ObservationSource == "" {
+	if feedCfg.ProviderName != FeedProviderStork.String() && feedCfg.ObservationSource == "" {
 		return errors.New("observation source is empty in feed config")
 	}
 
