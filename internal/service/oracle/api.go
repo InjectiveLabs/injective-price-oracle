@@ -55,11 +55,6 @@ func (s *apiSvc) Probe(ctx context.Context, payload *injectivepriceoracleapi.Pro
 
 	switch feedCfg.ProviderName {
 	case FeedProviderStork.String():
-		// Stork feeds don't pull price via observation source, just validate config
-		log.WithFields(log.Fields{
-			"provider": feedCfg.ProviderName,
-			"ticker":   feedCfg.Ticker,
-		}).Infoln("stork feed config validated successfully")
 		return &injectivepriceoracleapi.ProbeResponse{
 			Result: "ok",
 		}, nil
