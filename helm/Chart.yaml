@@ -1,0 +1,6 @@
+apiVersion: v2
+name: price-oracle
+description: Deploy price oracle providers for Injective
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
