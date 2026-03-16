@@ -1,0 +1,278 @@
+{{- /* ============================ START OF THE DEFINE BLOCK ======================== */}}
+{{- define ".oracle" }}
+{{- if and (hasKey . "enabled") .enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .type }}-{{ .name }}-oracle
+  annotations:
+    config-checksum: {{ printf "%s" (.feedConfigFiles | toYaml) | sha256sum }}
+  labels:
+    app: {{ .type }}-{{ .name }}-oracle
+spec:
+  replicas: {{ .replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ .type }}-{{ .name }}-oracle
+  template:
+    metadata:
+      labels:
+        app: {{ .type }}-{{ .name }}-oracle
+      annotations:
+        config-checksum: {{ printf "%s" (.feedConfigFiles | toYaml) | sha256sum }}
+    spec:
+      {{- with .tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- if eq .type "web2Provider" }}
+      initContainers:
+        - name: render-oracle-feeds
+          image: bash:5.2
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              mkdir -p /rendered
+              for f in /templates/*.tpl; do
+                name="$(basename "$f" .tpl)"
+                envsubst < "$f" > "/rendered/$name"
+              done
+          envFrom:
+            - secretRef:
+                name: {{ .type }}-{{ .name }}-oracle-api-keys
+          volumeMounts:
+            - name: oracle-{{ .name }}-feeds-templates
+              mountPath: /templates
+            - name: oracle-{{ .name }}-feeds-rendered
+              mountPath: /rendered
+      {{- end }}
+      containers:
+        - name: {{ .type }}-{{ .name }}-oracle
+          image: public.ecr.aws/l9h3g6c6/injective-price-oracle:{{ .version }}
+          command: ["injective-price-oracle", "start", "--feeds-dir", "/root/{{ .name }}-feeds"]
+          env:
+            # LOG CONFIG
+            - name: ORACLE_ENV
+              value: {{ .env.oracleEnv | default "prod" }}
+            - name: ORACLE_LOG_LEVEL
+              value: {{ .env.logLevel | default "error" }}
+
+            # CHAIN CONFIG
+            - name: ORACLE_SERVICE_WAIT_TIMEOUT
+              value: {{ .env.chain.serviceWaitTimeout | default "1m" }}
+            - name: ORACLE_COSMOS_CHAIN_ID
+              value: {{ .env.chain.chainId | default "injective-1" }}
+            - name: ORACLE_COSMOS_OVERRIDE_NETWORK
+              value: {{ .env.chain.networkOverride | default "false" | quote }}
+            - name: ORACLE_NETWORK_NODE
+              value: {{ .env.chain.networkNode | default "mainnet,lb" }}
+            - name: ORACLE_COSMOS_GRPC
+              value: {{ .env.chain.grpcEndpoint }}
+            - name: ORACLE_COSMOS_STREAM_GRPC
+              value: {{ .env.chain.grpcStreamEndpoint | default "" }}
+            - name: ORACLE_TENDERMINT_RPC
+              value: {{ .env.chain.tmEndpoint }}
+            - name: ORACLE_COSMOS_GAS_PRICES
+              value: {{ .env.chain.gasPrices | default "1600000000inj" }}
+            - name: ORACLE_COSMOS_GAS_ADJUST
+              value: {{ .env.chain.gasAdjust | default "1.5" | quote }}
+            - name: ORACLE_DYNAMIC_FEEDS_DIR
+              value: {{ .env.chain.dynamicFeedsDir | default "" | quote }}
+
+            # KEYRING CONFIG
+            {{- $keyring := (.env.keyring).enabled | default false }}
+            {{- if $keyring }}
+            - name: ORACLE_COSMOS_KEYRING
+              value: {{ (.env.keyring).keyring | default "file" }}
+            - name: ORACLE_COSMOS_KEYRING_DIR
+              value: {{ (.env.keyring).keyringDir | default "/root/provider-oracle/keyring-oracle" }}
+            - name: ORACLE_COSMOS_KEYRING_APP
+              value: {{ (.env.keyring).keyringApp | default "injectived" }}
+            - name: ORACLE_COSMOS_FROM
+              value: {{ (.env.keyring).cosmosFrom | default "oracle" }}
+            - name: ORACLE_COSMOS_FROM_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .type }}-{{ .name }}-oracle-secrets
+                  key: ORACLE_COSMOS_FROM_PASSPHRASE
+            {{- end }}
+            # COSMOS PK CONFIG
+            - name: ORACLE_COSMOS_PK
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .type }}-{{ .name }}-oracle-secrets
+                  key: ORACLE_COSMOS_PK
+            - name: ORACLE_COSMOS_USE_LEDGER
+              value: {{ (.env.keyring).useLedger | default "false" | quote }}
+
+            {{- if eq .type "stork" }}
+            - name: STORK_WEBSOCKET_URL
+              value: {{ .env.stork.websocketUrl }}
+            - name: STORK_WEBSOCKET_HEADER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .type }}-{{ .name }}-oracle-secrets
+                  key: STORK_WEBSOCKET_HEADER
+            - name: STORK_WEBSOCKET_SUBSCRIBE_MESSAGE
+              value: {{ .env.stork.websocketSubscribeMessage | quote }}
+            {{- end }}
+
+            {{- if eq .type "chainlink" }}
+            - name: CHAINLINK_WS_URL
+              value: {{ .env.chainlink.websocketUrl }}
+            - name: CHAINLINK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .type }}-{{ .name }}-oracle-secrets
+                  key: CHAINLINK_API_KEY
+            - name: CHAINLINK_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .type }}-{{ .name }}-oracle-secrets
+                  key: CHAINLINK_API_SECRET
+            {{- end }}
+
+            # DATADOG CONFIG
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: HOSTNAME
+              value: k8s-{{ .cluster_name }}/$(POD_NAME)
+            - name: DOGSTATSD_HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_ENTITY_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+
+            # STATSD CONFIG
+            - name: ORACLE_STATSD_PREFIX
+              value: {{ (.env.statsd).prefix | default "inj-oracle" }}
+            - name: ORACLE_STATSD_ADDR
+              value: signoz-k8s-infra-otel-agent.signoz:8125
+            - name: ORACLE_STATSD_STUCK_DUR
+              value: {{ (.env.statsd).stuckDur | default "5m" }}
+            - name: ORACLE_STATSD_MOCKING
+              value: {{ (.env.statsd).mocking | default "false" | quote }}
+            - name: ORACLE_STATSD_DISABLED
+              value: {{ (.env.statsd).disabled | default "false" | quote }}
+
+          volumeMounts:
+            {{- if $keyring }}
+            - name: keyring-oracle
+              mountPath: {{ (.volumeMounts.keyringOracle).path | default "/root/provider-oracle/keyring-oracle" }}
+            {{- end }}
+            {{- if eq .type "web2Provider" }}
+            - name: oracle-{{ .name }}-feeds-rendered
+              mountPath: "/root/{{ .name }}-feeds"
+              readOnly: true
+            {{- else }}
+            - name: oracle-{{ .name }}-feeds
+              mountPath: "/root/{{ .name }}-feeds"
+            {{- end }}
+
+          resources:
+            requests:
+              cpu: "0.5"
+              memory: "6Gi"
+            limits:
+              cpu: "0.5"
+              memory: "6Gi"
+
+      volumes:
+        {{- if $keyring }}
+        - name: keyring-oracle
+          persistentVolumeClaim:
+            claimName: injective-keyring-oracle
+        {{- end }}
+
+        {{- if eq .type "web2Provider" }}
+        - name: oracle-{{ .name }}-feeds-templates
+          configMap:
+            name: {{ .type }}-{{ .name }}-oracle-feeds
+
+        - name: oracle-{{ .name }}-feeds-rendered
+          emptyDir: {}
+        {{- else }}
+        - name: oracle-{{ .name }}-feeds
+          configMap:
+            name: {{ .type }}-{{ .name }}-oracle-feeds
+        {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .type }}-{{ .name }}-oracle-feeds
+data:
+{{- range .feedConfigFiles }}
+{{ .name | indent 2 }}: |
+{{ .content | indent 4 }}
+{{- end }}
+---
+{{- if eq .type "web2Provider" }}
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ .type }}-{{ .name }}-oracle-api-keys
+spec:
+  refreshInterval: {{ .secret.refreshInterval | default "1h" | quote }}
+  secretStoreRef:
+    name: gcp-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: {{ .type }}-{{ .name }}-oracle-api-keys
+    creationPolicy: Owner
+  dataFrom:
+  - extract:
+      key: {{ default (printf "%s-%s-%s-oracle-api-keys" .global_env .type .name) .secret.api_keys_override | quote }}
+---
+{{- end }}
+
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ .type }}-{{ .name }}-oracle-secrets
+spec:
+  refreshInterval: {{ .secret.refreshInterval | default "1h" | quote }}
+  secretStoreRef:
+    name: gcp-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: {{ .type }}-{{ .name }}-oracle-secrets
+    creationPolicy: Owner
+  dataFrom:
+  - extract:
+      key: {{ default (printf "%s-%s-%s-oracle-secrets" .global_env .type .name) .secret.oracle_secrets_override | quote }}
+---
+{{- end }}
+{{- end }}
+{{- /* ============================ END OF THE DEFINE BLOCK =========================== */}}
+
+{{- /* This is responsible for the iteration thru the different apps, according to the values.yaml files */}}
+{{- if and (.Values.oracle) (kindIs "map" .Values.oracle) }}
+{{- $globalClusterName := .Values.cluster_name }}
+{{- $globalEnv := .Values.env | default "testnet" }}
+{{- range $providerType, $instances := .Values.oracle }}
+  {{- if kindIs "map" $instances }}
+    {{- range $instanceName, $instance := $instances }}
+      {{- if kindIs "map" $instance }}
+        {{- $app := deepCopy $instance }}
+        {{- $_ := set $app "type" $providerType }}
+        {{- if not (hasKey $app "name") }}
+          {{- $_ := set $app "name" $instanceName }}
+        {{- end }}
+        {{- if $globalClusterName }}
+          {{- $_ := set $app "cluster_name" $globalClusterName }}
+        {{- end }}
+        {{- $_ := set $app "global_env" $globalEnv }}
+{{- include ".oracle" $app }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }} {{- /* end for outer provider range */}}
+{{- end }}

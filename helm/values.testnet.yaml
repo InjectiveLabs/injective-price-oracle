@@ -1,0 +1,151 @@
+env: testnet
+cluster_name: testnet
+
+oracle:
+  chainlink:
+    main:
+      enabled: true
+      name: main
+      version: v1.2.8-chainlink-rc3
+      tolerations:
+        - key: app
+          operator: Equal
+          value: indexer
+          effect: NoSchedule
+        - key: app
+          operator: Equal
+          value: mongo-indexer
+          effect: NoSchedule
+      env:
+        oracleEnv: testnet
+        logLevel: info
+        chain:
+          serviceWaitTimeout: 1m
+          chainId: injective-888
+          networkOverride: "true"
+          networkNode: "testnet,lb"
+          grpcEndpoint: testnet.sentry.chain.grpc.injective.network:443,testnet.chain.grpc.injective.network:443
+          grpcStreamEndpoint: testnet.sentry.chain.stream.injective.network:443,testnet.chain.stream.injective.network:443
+          tmEndpoint: https://testnet.sentry.tm.injective.network:443,https://testnet.tm.injective.network:443
+          gasPrices: 160000000inj
+          gasAdjust: "1.8"
+        keyring:
+          useLedger: "false"
+        chainlink:
+          websocketUrl: wss://ws.testnet-dataengine.chain.link
+      secret:
+        refreshInterval: 1h
+        streams_override: 
+        oracle_secrets_override: 
+      feedConfigFiles:
+        - name: chainlink_btcusd.toml
+          content: |
+            provider = "chainlink"
+            feedId = "0x00037da06d56d083fe599397a4769a042d63aa73dc4ef57709d31e9971a5b439"
+            ticker = "BTC/USD"
+            pullInterval = "2s"
+            oracleType = "Chainlink"
+        - name: chainlink_ethusd.toml
+          content: |
+            provider = "chainlink"
+            feedId = "0x000359843a543ee2fe414dc14c7e7920ef10f4372990b79d6361cdc0dd1ba782"
+            ticker = "ETH/USD"
+            pullInterval = "2s"
+            oracleType = "Chainlink"
+        - name: chainlink_xrpusd.toml
+          content: |
+            provider = "chainlink"
+            feedId = "0x00035e3ddda6345c3c8ce45639d4449451f1d5828d7a70845e446f04905937cd"
+            ticker = "XRP/USD"
+            pullInterval = "2s"
+            oracleType = "Chainlink"
+        - name: chainlink_arbusd.toml
+          content: |
+            provider = "chainlink"
+            feedId = "0x0003c90f4d0e133914a02466e44f3392560c86248925ce651ef8e44f1ec2ef4a"
+            ticker = "ARB/USD"
+            pullInterval = "2s"
+            oracleType = "Chainlink"
+        - name: chainlink_usdtusd.toml
+          content: |
+            provider = "chainlink"
+            feedId = "0x00032874077216155926e26c159c1c20a572921371d9de605fe9633e48d136f9"
+            ticker = "USDT/USD"
+            pullInterval = "2s"
+            oracleType = "Chainlink"
+        - name: chainlink_usdcusd.toml
+          content: |
+            provider = "chainlink"
+            feedId = "0x0003dc85e8b01946bf9dfd8b0db860129181eb6105a8c8981d9f28e00b6f60d9"
+            ticker = "USDC/USD"
+            pullInterval = "2s"
+            oracleType = "Chainlink"
+        - name: chainlink_injusd.toml
+          content: |
+            provider = "chainlink"
+            feedId = "0x0003c94e392a52263b47a98d2898cc099eb88c44d25ea694af5e15b93b9cf380"
+            ticker = "INJ/USD"
+            pullInterval = "2s"
+            oracleType = "Chainlink"
+        - name: chainlink_linkusd.toml
+          content: |
+            provider = "chainlink"
+            feedId = "0x00036fe43f87884450b4c7e093cd5ed99cac6640d8c2000e6afc02c8838d0265"
+            ticker = "LINK/USD"
+            pullInterval = "2s"
+            oracleType = "Chainlink"
+
+  stork:
+    main:
+      enabled: true
+      name: main
+      version: v1.2.14
+      tolerations:
+        - key: app
+          operator: Equal
+          value: indexer
+          effect: NoSchedule
+        - key: app
+          operator: Equal
+          value: mongo-indexer
+          effect: NoSchedule
+      env:
+        oracleEnv: testnet
+        logLevel: info
+        chain:
+          serviceWaitTimeout: 1m
+          chainId: injective-888
+          networkOverride: "true"
+          networkNode: "testnet,lb"
+          grpcEndpoint: testnet.sentry.chain.grpc.injective.network:443,testnet.chain.grpc.injective.network:443
+          grpcStreamEndpoint: testnet.sentry.chain.stream.injective.network:443,testnet.chain.stream.injective.network:443
+          tmEndpoint: https://testnet.sentry.tm.injective.network:443,https://testnet.tm.injective.network:443
+          gasPrices: 160000000inj
+          gasAdjust: "1.8"
+        keyring:
+          useLedger: "false"
+        stork:
+          websocketUrl: wss://api.jp.stork-oracle.network/evm/subscribe
+          websocketSubscribeMessage: '{"type":"subscribe","data":["%s"]}'
+      secret:
+        refreshInterval: 1h
+        oracle_secrets_override: 
+      feedConfigFiles:
+        - name: stork_hypeusd.toml
+          content: |
+            provider = "stork"
+            ticker = "HYPEUSD"
+            pullInterval = "1m"
+            oracleType = "Stork"
+        - name: stork_buidlusd.toml
+          content: |
+            provider = "stork"
+            ticker = "BUIDLUSD"
+            pullInterval = "1m"
+            oracleType = "Stork"
+        - name: stork_usdtusd.toml
+          content: |
+            provider = "stork"
+            ticker = "USDTUSD"
+            pullInterval = "1m"
+            oracleType = "Stork"
