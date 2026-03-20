@@ -1,0 +1,163 @@
+{{- if and (.Values.api) (.Values.api.enabled) }}
+{{- $api := .Values.api }}
+{{- $env := $api.env }}
+{{- $statsd := ($env).statsd }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: price-oracle-api
+  labels:
+    app: price-oracle-api
+spec:
+  replicas: {{ $api.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: price-oracle-api
+  template:
+    metadata:
+      labels:
+        app: price-oracle-api
+    spec:
+      {{- with $api.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: price-oracle-api
+          image: public.ecr.aws/l9h3g6c6/injective-price-oracle:{{ $api.version }}
+          command: ["injective-price-oracle", "api"]
+          ports:
+            - name: http
+              containerPort: {{ $api.port | default 9924 }}
+              protocol: TCP
+          env:
+            # LOG CONFIG
+            - name: ORACLE_ENV
+              value: {{ $env.oracleEnv | default "prod" }}
+            - name: ORACLE_LOG_LEVEL
+              value: {{ $env.logLevel | default "error" }}
+
+            # API CONFIG
+            - name: GRPC_WEB_LISTEN_ADDRESS
+              value: {{ $env.grpcWebListenAddress | default "0.0.0.0:9924" }}
+            - name: GRPC_WEB_REQUEST_TIMEOUT
+              value: {{ $env.grpcWebRequestTimeout | default "10s" }}
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: price-oracle-api-secrets
+                  key: API_KEY
+
+            # DATADOG CONFIG
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: HOSTNAME
+              value: k8s-{{ .Values.cluster_name }}/$(POD_NAME)
+            - name: DOGSTATSD_HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_ENTITY_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+
+            # STATSD CONFIG
+            - name: ORACLE_STATSD_PREFIX
+              value: {{ ($statsd).prefix | default "inj-price-oracle-api" }}
+            - name: ORACLE_STATSD_ADDR
+              value: {{ ($statsd).addr | default "" }}
+            - name: ORACLE_STATSD_AGENT
+              value: {{ ($statsd).agent | default "datadog" }}
+            - name: ORACLE_STATSD_STUCK_DUR
+              value: {{ ($statsd).stuckDur | default "5m" }}
+            - name: ORACLE_STATSD_MOCKING
+              value: {{ ($statsd).mocking | default "false" | quote }}
+            - name: ORACLE_STATSD_DISABLED
+              value: {{ ($statsd).disabled | default "false" | quote }}
+
+          livenessProbe:
+            httpGet:
+              path: /api/health/v1/status
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /api/health/v1/status
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+
+          resources:
+            requests:
+              cpu: {{ ($api.resources).requests.cpu | default "0.25" | quote }}
+              memory: {{ ($api.resources).requests.memory | default "256Mi" }}
+            limits:
+              cpu: {{ ($api.resources).limits.cpu | default "0.5" | quote }}
+              memory: {{ ($api.resources).limits.memory | default "512Mi" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: price-oracle-api
+  labels:
+    app: price-oracle-api
+spec:
+  type: ClusterIP
+  selector:
+    app: price-oracle-api
+  ports:
+    - name: http
+      port: {{ $api.port | default 9924 }}
+      targetPort: http
+      protocol: TCP
+---
+{{- $gw := $api.gateway }}
+{{- if ($gw).name }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: price-oracle-api
+  labels:
+    app: price-oracle-api
+spec:
+  parentRefs:
+    - name: {{ $gw.name }}
+      {{- if $gw.namespace }}
+      namespace: {{ $gw.namespace }}
+      {{- end }}
+  {{- if $gw.hostname }}
+  hostnames:
+    - {{ $gw.hostname | quote }}
+  {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ $gw.pathPrefix | default "/" }}
+      backendRefs:
+        - name: price-oracle-api
+          port: {{ $api.port | default 9924 }}
+---
+{{- end }}
+{{- $secret := $api.secret }}
+
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: price-oracle-api-secrets
+spec:
+  refreshInterval: {{ ($secret).refreshInterval | default "1h" | quote }}
+  secretStoreRef:
+    name: gcp-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: price-oracle-api-secrets
+    creationPolicy: Owner
+  dataFrom:
+  - extract:
+      key: {{ default (printf "%s-price-oracle-api-secrets" .Values.env) ($secret).secretOverride | quote }}
+{{- end }}
