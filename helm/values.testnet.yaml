@@ -151,7 +151,7 @@ oracle:
             oracleType = "Stork"
 
 api:
-  enabled: true
+  enabled: false
   version: v1.2.14
   replicas: 1
   port: 9924
