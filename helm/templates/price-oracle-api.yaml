@@ -2,29 +2,28 @@
 {{- $api := .Values.api }}
 {{- $env := $api.env }}
 {{- $statsd := ($env).statsd }}
-{{- $resources := $api.resources }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: oracle-api
+  name: price-oracle-api
   labels:
-    app: oracle-api
+    app: price-oracle-api
 spec:
   replicas: {{ $api.replicas | default 1 }}
   selector:
     matchLabels:
-      app: oracle-api
+      app: price-oracle-api
   template:
     metadata:
       labels:
-        app: oracle-api
+        app: price-oracle-api
     spec:
       {{- with $api.tolerations }}
       tolerations:
 {{ toYaml . | indent 8 }}
       {{- end }}
       containers:
-        - name: oracle-api
+        - name: price-oracle-api
           image: public.ecr.aws/l9h3g6c6/injective-price-oracle:{{ $api.version }}
           command: ["injective-price-oracle", "api"]
           ports:
@@ -46,7 +45,7 @@ spec:
             - name: API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: oracle-api-secrets
+                  name: price-oracle-api-secrets
                   key: API_KEY
 
             # DATADOG CONFIG
@@ -67,7 +66,7 @@ spec:
 
             # STATSD CONFIG
             - name: ORACLE_STATSD_PREFIX
-              value: {{ ($statsd).prefix | default "inj-oracle-api" }}
+              value: {{ ($statsd).prefix | default "inj-price-oracle-api" }}
             - name: ORACLE_STATSD_ADDR
               value: {{ ($statsd).addr | default "" }}
             - name: ORACLE_STATSD_AGENT
@@ -92,29 +91,24 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 10
 
-          {{- if $resources }}
-          resources:
-{{ toYaml $resources | indent 12 }}
-          {{- else }}
           resources:
             requests:
-              cpu: "0.25"
-              memory: "256Mi"
+              cpu: {{ ($api.resources).requests.cpu | default "0.25" | quote }}
+              memory: {{ ($api.resources).requests.memory | default "256Mi" }}
             limits:
-              cpu: "0.5"
-              memory: "512Mi"
-          {{- end }}
+              cpu: {{ ($api.resources).limits.cpu | default "0.5" | quote }}
+              memory: {{ ($api.resources).limits.memory | default "512Mi" }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: oracle-api
+  name: price-oracle-api
   labels:
-    app: oracle-api
+    app: price-oracle-api
 spec:
   type: ClusterIP
   selector:
-    app: oracle-api
+    app: price-oracle-api
   ports:
     - name: http
       port: {{ $api.port | default 9924 }}
@@ -126,9 +120,9 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: oracle-api
+  name: price-oracle-api
   labels:
-    app: oracle-api
+    app: price-oracle-api
 spec:
   parentRefs:
     - name: {{ $gw.name }}
@@ -145,24 +139,25 @@ spec:
             type: PathPrefix
             value: {{ $gw.pathPrefix | default "/" }}
       backendRefs:
-        - name: oracle-api
+        - name: price-oracle-api
           port: {{ $api.port | default 9924 }}
 ---
 {{- end }}
 {{- $secret := $api.secret }}
+
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
-  name: oracle-api-secrets
+  name: price-oracle-api-secrets
 spec:
   refreshInterval: {{ ($secret).refreshInterval | default "1h" | quote }}
   secretStoreRef:
     name: gcp-secret-store
     kind: ClusterSecretStore
   target:
-    name: oracle-api-secrets
+    name: price-oracle-api-secrets
     creationPolicy: Owner
   dataFrom:
-    - extract:
-        key: {{ default (printf "%s-oracle-api-secrets" .Values.env) ($secret).secretOverride | quote }}
+  - extract:
+      key: {{ default (printf "%s-price-oracle-api-secrets" .Values.env) ($secret).secretOverride | quote }}
 {{- end }}
