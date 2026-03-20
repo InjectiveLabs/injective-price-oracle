@@ -149,3 +149,45 @@ oracle:
             ticker = "USDTUSD"
             pullInterval = "1m"
             oracleType = "Stork"
+
+api:
+  enabled: true
+  version: v1.2.14
+  replicas: 1
+  port: 9924
+  resources:
+    requests:
+      cpu: "0.25"
+      memory: "256Mi"
+    limits:
+      cpu: "0.5"
+      memory: "512Mi"
+  tolerations:
+    - key: app
+      operator: Equal
+      value: indexer
+      effect: NoSchedule
+    - key: app
+      operator: Equal
+      value: mongo-indexer
+      effect: NoSchedule
+  env:
+    oracleEnv: testnet
+    logLevel: info
+    grpcWebListenAddress: "0.0.0.0:9924"
+    grpcWebRequestTimeout: "10s"
+    statsd:
+      prefix: "inj-oracle-api"
+      addr: ""
+      agent: "datadog"
+      stuckDur: "5m"
+      mocking: "false"
+      disabled: "true"
+  secret:
+    refreshInterval: 1h
+    secretOverride: ""
+  gateway:
+    name: ""
+    namespace: ""
+    hostname: ""
+    pathPrefix: "/"
