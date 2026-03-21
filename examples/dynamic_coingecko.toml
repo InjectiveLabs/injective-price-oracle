@@ -1,0 +1,10 @@
+provider = "coingecko"
+ticker = "INJ/USD"
+pullInterval = "1m"
+observationSource = """
+   ticker [type=http method=GET url="https://api.coingecko.com/api/v3/simple/price?ids=injective-protocol&vs_currencies=usd"];
+   parsePrice [type="jsonparse" path="injective-protocol,usd"]
+   multiplyDecimals [type="multiply" times=1000000]
+
+   ticker -> parsePrice -> multiplyDecimals
+"""
