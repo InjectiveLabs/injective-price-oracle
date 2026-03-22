@@ -305,25 +305,6 @@ oracle:
             GOOGLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             GOOGLUSDTPrice
           """
-      - name: H100.tpl
-        content: |
-          provider = "InjectiveLabs"
-          ticker = "H100/USDT"
-          pullInterval = "1m"
-          oracleType = "Provider"
-          observationSource = """
-            feed [type=http
-              method=GET
-              url="https://markets.squaretower.xyz/api/price-index/injective-h100"
-              headerMap="{\\"Authorization\\": \\"Bearer $SQUARE_TOWER_API_KEY\\"}"];
-            feedParse [type="jsonparse" path="price"]
-            feed -> feedParse
-            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
-            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
-            usdt -> usdtParse
-            H100USDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=3]
-            H100USDTPrice
-          """
       - name: HOOD.tpl
         content: |
           provider = "InjectiveLabs"
