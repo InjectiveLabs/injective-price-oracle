@@ -41,6 +41,7 @@ jobs:
 
       - name: Validate rendered manifests
         run: |
+          set -euo pipefail
           while IFS= read -r f; do
             [ -z "$f" ] && continue
             echo "--- Validating with $f ---"
