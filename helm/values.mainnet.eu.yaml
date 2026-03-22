@@ -1,0 +1,416 @@
+env: mainnet
+cluster_name: eu
+oracle:
+  web2Provider:
+    main:
+      name: "main"
+      enabled: true
+      version: "v1.2.13"
+      env:
+        chain:
+          chainId: injective-1
+          gasPrices: 1600000000inj
+          gasAdjust: "1.1"
+          serviceWaitTimeout: 1m
+          networkOverride: "true"
+          grpcEndpoint: "k8s.bm.mainnet.chain.grpc.injective.network:443,sentry.chain.grpc.injective.network:443"
+          grpcStreamEndpoint: "k8s.bm.mainnet.chain.stream.injective.network:443,sentry.chain.stream.injective.network:443"
+          tmEndpoint: "https://k8s.bm.mainnet.tm.injective.network,https://sentry.tm.injective.network:443"
+        keyring:
+          useLedger: "false"
+        logLevel: info
+        oracleEnv: prod
+      replicaCount: 1
+      feedConfigFiles:
+      - name: AAPL
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "AAPL/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x8c320e4cd87c6cef41513aead15db413cf9253211923fef6e87187a7f6688906%22%2C%220x49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688%22%2C%220x5a207c4aa0114baecf852fcd9db9beb8ec715f2db48caa525dbd878fd416fb09%22%2C%220x241b9a5ce1c3e4bfc68e377158328628f1b478afaa796c4b1760bd3713c2d2d2%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            AAPLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            AAPLUSDTPrice
+          """
+      - name: AMZN
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "AMZN/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x82c59e36a8e0247e15283748d6cd51f5fa1019d73fbf3ab6d927e17d9e357a7f%22%2C%220xb5d0e0fa58a1f8b81498ae670ce93c872d14434b72c364885d4fa1b257cbb07a%22%2C%220x62731dfcc8b8542e52753f208248c3e73fab2ec15422d6f65c2decda71ccea0d%22%2C%220x4ec1330b56eca05037c6b5a51d05f73db79bf3b4d29899881acd27966af184b4%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            AMZNUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            AMZNUSDTPrice
+          """
+      - name: ANTHROPIC
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "ANTHROPIC/USDT"
+          pullInterval = "1m"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=e1fe25ac6da5502d0ff590e5d9fd6f00cdc230443b1c98b9483efee7f4b6cada&execInputs=466959-97&returnLastResult=true&encoding=utf8"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse [type="jsonparse" path="data,result"]
+            feed -> feedParse
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            ANTHROPICUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
+            ANTHROPICUSDTPrice
+          """
+      - name: COIN
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "COIN/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x8bdee6bc9dc5a61b971e31dcfae96fc0c7eae37b2604aa6002ad22980bd3517c%22%2C%220xfee33f2a978bf32dd6b662b65ba8083c6773b494f8401194ec1870c640860245%22%2C%220x5c3bd92f2eed33779040caea9f82fac705f5121d26251f8f5e17ec35b9559cd4%22%2C%220x42ded7a3ed036606ab22ece1c942f6f9245a67f6f4ec27cfad5974d45fe9d6b6%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            COINUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            COINUSDTPrice
+          """
+      - name: CRCL
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "CRCL/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xb6ce1644a22bb348f89a81696141c1caaca5e7ea83de289a44fba1a9897ca2d6%22%2C%220x92b8527aabe59ea2b12230f7b532769b133ffb118dfbd48ff676f14b273f1365%22%2C%220x9bdba52fbb3d588d573928b1e781c6441e446a83c011fed92d8362c5b309ce02%22%2C%220x63cc3973d36735f8b1725f1069a7ddee200db1570573674da916282fde15dd0e%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            CRCLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            CRCLUSDTPrice
+          """
+      - name: GOOGL
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "GOOGL/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x43c3a42db1a663a22551d6c35d5bab823e86c1a05f27de3dd900e68952fce175%22%2C%220x5a48c03e9b9cb337801073ed9d166817473697efff0d138874e0f6a33d6d5aa6%22%2C%220x88d0800b1649d98e21b8bf9c3f42ab548034d62874ad5d80e1c1b730566d7f61%22%2C%220x07d24bb76843496a45bce0add8b51555f2ea02098cb04f4c6d61f7b5720836b4%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            GOOGLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            GOOGLUSDTPrice
+          """
+      - name: H100
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "H100/USDT"
+          pullInterval = "1m"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+              method=GET
+              url="https://markets.squaretower.xyz/api/price-index/injective-h100"
+              headerMap="{\\"Authorization\\": \\"Bearer 19383ff839fbb70c5b54152d9b9c1b8cf19a1555448b4b206748236f6b0c4094\\"}"];
+            feedParse [type="jsonparse" path="price"]
+            feed -> feedParse
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+            H100USDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=3]
+            H100USDTPrice
+          """
+      - name: HOOD
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "HOOD/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x52ecf79ab14d988ca24fbd282a7cb91d41d36cb76aa3c9075a3eabce9ff63e2f%22%2C%220x306736a4035846ba15a3496eed57225b64cc19230a50d14f3ed20fd7219b7849%22%2C%220xd2cecc2b72dc91fcc71750fbdb811b4ff04eff36e26a6ae6628dbeaed01e6d62%22%2C%220xf6a467733ed71ee41f7e50132b14cff1d6857554a40d8a92c63859d1bcd64e57%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            HOODUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            HOODUSDTPrice
+          """
+      - name: META
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "META/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xce0999c4f22f35f00e8f9913694868d00279c0b9efbd7cb1c358bf2fd76295c9%22%2C%220x78a3e3b8e676a8f73c439f5d749737034b139bbbe899ba5775216fba596607fe%22%2C%220x399f1e8f1c4a517859963b56f104727a7a3c7f0f8fee56d34fa1f72e5a4b78ef%22%2C%220x783a457c2fe5642c96a66ba9a2fe61f511e9a0b539e0ed2a443321978e4d65a1%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            METAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            METAUSDTPrice
+          """
+      - name: MSFT
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "MSFT/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xe8da97162840e7d6170094e0722900b1f2577dd1cc63cff10f91fc68a17eb2c9%22%2C%220xd0ca23c1cc005e004ccf1db5bf76aeb6a49218f43dac3d4b275e92de12ded4d1%22%2C%220x556b3e4dcc1c66448ba4054a0d9485545e3227ffc90a269f630620c5a38241ab%22%2C%220x8f98f8267ddddeeb61b4fd11f21dc0c2842c417622b4d685243fa73b5830131f%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            MSFTUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            MSFTUSDTPrice
+          """
+      - name: MSTR
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "MSTR/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x1a11eb21c271f3127e4c9ec8a0e9b1042dc088ccba7a94a1a7d1aa37599a00f6%22%2C%220xe1e80251e5f5184f2195008382538e847fafc36f751896889dd3d1b1f6111f09%22%2C%220xd8b856d7e17c467877d2d947f27b832db0d65b362ddb6f728797d46b0a8b54c0%22%2C%220xc3055f49e1dc863a7f24d9b83e86fe10d7d16fb583bc6445505b01d230e0d647%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            MSTRUUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            MSTRUUSDTPrice
+          """
+
+      - name: NVDA
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "NVDA/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x61c4ca5b9731a79e285a01e24432d57d89f0ecdd4cd7828196ca8992d5eafef6%22%2C%220xb1073854ed24cbc755dc527418f52b7d271f6cc967bbf8d8129112b18860a593%22%2C%220x25719379353a508b1531945f3c466759d6efd866f52fbaeb3631decb70ba381f%22%2C%220xc949a96fd1626e82abc5e1496e6e8d44683ac8ac288015ee90bf37257e3e6bf6%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            NVDAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            NVDAUSDTPrice
+          """
+      - name: OPENAI
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "OPENAI/USDT"
+          pullInterval = "1m"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=e1fe25ac6da5502d0ff590e5d9fd6f00cdc230443b1c98b9483efee7f4b6cada&execInputs=149504-14&returnLastResult=true&encoding=utf8"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse [type="jsonparse" path="data,result"]
+            feed -> feedParse
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            OPENAIUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
+            OPENAIUSDTPrice
+          """
+      - name: PLTR
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "PLTR/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xbd8a8e449278ad0b6512695b1c558f816309f045d4e3da21dfc19448281840e8%22%2C%220x11a70634863ddffb71f2b11f2cff29f73f3db8f6d0b78c49f2b5f4ad36e885f0%22%2C%220xb11610f59456057d9bc82b0795c6d7aea6e2e075fc3e1991abc05e2b2861abb2%22%2C%220x3a4c922ec7e8cd86a6fa4005827e723a134a16f4ffe836eac91e7820c61f75a1%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            PLTRUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            PLTRUSDTPrice
+          """
+      - name: SPACEX
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "SPACEX/USDT"
+          pullInterval = "1m"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=e1fe25ac6da5502d0ff590e5d9fd6f00cdc230443b1c98b9483efee7f4b6cada&execInputs=46488-07&returnLastResult=true&encoding=utf8"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse [type="jsonparse" path="data,result"]
+            feed -> feedParse
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            SPACEXUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
+            SPACEXUSDTPrice
+          """
+      - name: TRADFI
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "TRADFI/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x34f6ef70940cb9b6a37e030689612bf454f59f4a2fc5d3e03bdf2b330a088107%22%2C%220x19e09bb805456ada3979a7d1cbb4b6d63babc3a0f8e8a9509f68afa5c4c11cd5%22%2C%220x5374a7d76a45ae2443cef351d10482b7bcc6ef5a928e75030d63b5fb3abe7cb5%22%2C%220x05d590e94e9f51abe18ed0421bc302995673156750e914ac1600583fe2e03f99%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            TRADFIUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            TRADFIUSDTPrice
+          """
+
+      - name: TSLA
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "TSLA/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x42676a595d0099c381687124805c8bb22c75424dffcaa55e3dc6549854ebe20a%22%2C%220x16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1%22%2C%220x2a797e196973b72447e0ab8e841d9f5706c37dc581fe66a0bd21bcd256cdb9b9%22%2C%220x713631e41c06db404e6a5d029f3eebfd5b885c59dce4a19f337c024e26584e26%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            TSLAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            TSLAUSDTPrice
+          """
+      - name: TTI
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "TTI/USDT"
+          pullInterval = "2s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xfbbbc98c9d0591ad0ca0b0e53ff2efb955fef8958ffa6890f5a3599e91ec1d49%22%2C%220x9695e2b96ea7b3859da9ed25b7a46a920a776e2fdae19a7bcfdf2b219230452d%22%2C%220xe0746896538f836f754adae0aff16859b33344736cbd85f2e36fb8ca057b9d26%22%2C%220x0eda5e8f3e5881e7e64971b02359250f9d70977e63940c4c9c0d77f54195f13e%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
+            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+            usdt -> usdtParse
+
+            TTIUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
+            TTIUSDTPrice
+          """
