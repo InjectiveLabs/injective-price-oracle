@@ -25,19 +25,20 @@ spec:
       tolerations:
 {{ toYaml . | indent 8 }}
       {{- end }}
-      {{- if eq .type "web2Provider" }}
+      {{- if eq .type "web2-provider" }}
       initContainers:
         - name: render-oracle-feeds
-          image: bash:5.2
+          image: alpine:3.19
           command:
             - /bin/sh
             - -c
             - |
               set -eu
+              apk add --no-cache gettext
               mkdir -p /rendered
               for f in /templates/*.tpl; do
                 name="$(basename "$f" .tpl)"
-                envsubst < "$f" > "/rendered/$name"
+                envsubst < "$f" > "/rendered/$name.toml"
               done
           envFrom:
             - secretRef:
@@ -167,7 +168,7 @@ spec:
             - name: keyring-oracle
               mountPath: {{ (.volumeMounts.keyringOracle).path | default "/root/provider-oracle/keyring-oracle" }}
             {{- end }}
-            {{- if eq .type "web2Provider" }}
+            {{- if eq .type "web2-provider" }}
             - name: oracle-{{ .name }}-feeds-rendered
               mountPath: "/root/{{ .name }}-feeds"
               readOnly: true
@@ -191,7 +192,7 @@ spec:
             claimName: injective-keyring-oracle
         {{- end }}
 
-        {{- if eq .type "web2Provider" }}
+        {{- if eq .type "web2-provider" }}
         - name: oracle-{{ .name }}-feeds-templates
           configMap:
             name: {{ .type }}-{{ .name }}-oracle-feeds
@@ -214,7 +215,7 @@ data:
 {{ .content | indent 4 }}
 {{- end }}
 ---
-{{- if eq .type "web2Provider" }}
+{{- if eq .type "web2-provider" }}
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
