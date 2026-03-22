@@ -1,155 +1,7 @@
-env: testnet
-cluster_name: testnet
-
+env: mainnet
+cluster_name: eu
 oracle:
-  chainlink:
-    main:
-      enabled: true
-      name: main
-      version: v1.2.8-chainlink-rc3
-      tolerations:
-        - key: app
-          operator: Equal
-          value: indexer
-          effect: NoSchedule
-        - key: app
-          operator: Equal
-          value: mongo-indexer
-          effect: NoSchedule
-      env:
-        oracleEnv: testnet
-        logLevel: info
-        chain:
-          serviceWaitTimeout: 1m
-          chainId: injective-888
-          networkOverride: "true"
-          networkNode: "testnet,lb"
-          grpcEndpoint: testnet.sentry.chain.grpc.injective.network:443,testnet.chain.grpc.injective.network:443
-          grpcStreamEndpoint: testnet.sentry.chain.stream.injective.network:443,testnet.chain.stream.injective.network:443
-          tmEndpoint: https://testnet.sentry.tm.injective.network:443,https://testnet.tm.injective.network:443
-          gasPrices: 160000000inj
-          gasAdjust: "1.8"
-        keyring:
-          useLedger: "false"
-        chainlink:
-          websocketUrl: wss://ws.testnet-dataengine.chain.link
-      secret:
-        refreshInterval: 1h
-        streams_override: 
-        oracle_secrets_override: 
-      feedConfigFiles:
-        - name: chainlink_btcusd.toml
-          content: |
-            provider = "chainlink"
-            feedId = "0x00037da06d56d083fe599397a4769a042d63aa73dc4ef57709d31e9971a5b439"
-            ticker = "BTC/USD"
-            pullInterval = "2s"
-            oracleType = "Chainlink"
-        - name: chainlink_ethusd.toml
-          content: |
-            provider = "chainlink"
-            feedId = "0x000359843a543ee2fe414dc14c7e7920ef10f4372990b79d6361cdc0dd1ba782"
-            ticker = "ETH/USD"
-            pullInterval = "2s"
-            oracleType = "Chainlink"
-        - name: chainlink_xrpusd.toml
-          content: |
-            provider = "chainlink"
-            feedId = "0x00035e3ddda6345c3c8ce45639d4449451f1d5828d7a70845e446f04905937cd"
-            ticker = "XRP/USD"
-            pullInterval = "2s"
-            oracleType = "Chainlink"
-        - name: chainlink_arbusd.toml
-          content: |
-            provider = "chainlink"
-            feedId = "0x0003c90f4d0e133914a02466e44f3392560c86248925ce651ef8e44f1ec2ef4a"
-            ticker = "ARB/USD"
-            pullInterval = "2s"
-            oracleType = "Chainlink"
-        - name: chainlink_usdtusd.toml
-          content: |
-            provider = "chainlink"
-            feedId = "0x00032874077216155926e26c159c1c20a572921371d9de605fe9633e48d136f9"
-            ticker = "USDT/USD"
-            pullInterval = "2s"
-            oracleType = "Chainlink"
-        - name: chainlink_usdcusd.toml
-          content: |
-            provider = "chainlink"
-            feedId = "0x0003dc85e8b01946bf9dfd8b0db860129181eb6105a8c8981d9f28e00b6f60d9"
-            ticker = "USDC/USD"
-            pullInterval = "2s"
-            oracleType = "Chainlink"
-        - name: chainlink_injusd.toml
-          content: |
-            provider = "chainlink"
-            feedId = "0x0003c94e392a52263b47a98d2898cc099eb88c44d25ea694af5e15b93b9cf380"
-            ticker = "INJ/USD"
-            pullInterval = "2s"
-            oracleType = "Chainlink"
-        - name: chainlink_linkusd.toml
-          content: |
-            provider = "chainlink"
-            feedId = "0x00036fe43f87884450b4c7e093cd5ed99cac6640d8c2000e6afc02c8838d0265"
-            ticker = "LINK/USD"
-            pullInterval = "2s"
-            oracleType = "Chainlink"
-
-  stork:
-    main:
-      enabled: true
-      name: main
-      version: v1.2.14
-      tolerations:
-        - key: app
-          operator: Equal
-          value: indexer
-          effect: NoSchedule
-        - key: app
-          operator: Equal
-          value: mongo-indexer
-          effect: NoSchedule
-      env:
-        oracleEnv: testnet
-        logLevel: info
-        chain:
-          serviceWaitTimeout: 1m
-          chainId: injective-888
-          networkOverride: "true"
-          networkNode: "testnet,lb"
-          grpcEndpoint: testnet.sentry.chain.grpc.injective.network:443,testnet.chain.grpc.injective.network:443
-          grpcStreamEndpoint: testnet.sentry.chain.stream.injective.network:443,testnet.chain.stream.injective.network:443
-          tmEndpoint: https://testnet.sentry.tm.injective.network:443,https://testnet.tm.injective.network:443
-          gasPrices: 160000000inj
-          gasAdjust: "1.8"
-        keyring:
-          useLedger: "false"
-        stork:
-          websocketUrl: wss://api.jp.stork-oracle.network/evm/subscribe
-          websocketSubscribeMessage: '{"type":"subscribe","data":["%s"]}'
-      secret:
-        refreshInterval: 1h
-        oracle_secrets_override: 
-      feedConfigFiles:
-        - name: stork_hypeusd.toml
-          content: |
-            provider = "stork"
-            ticker = "HYPEUSD"
-            pullInterval = "1m"
-            oracleType = "Stork"
-        - name: stork_buidlusd.toml
-          content: |
-            provider = "stork"
-            ticker = "BUIDLUSD"
-            pullInterval = "1m"
-            oracleType = "Stork"
-        - name: stork_usdtusd.toml
-          content: |
-            provider = "stork"
-            ticker = "USDTUSD"
-            pullInterval = "1m"
-            oracleType = "Stork"
-  web2-provider:
+  web2Provider:
     main:
       name: "main"
       enabled: true
@@ -169,12 +21,8 @@ oracle:
         logLevel: info
         oracleEnv: prod
       replicaCount: 1
-      secret:
-        refreshInterval: 1h
-        streams_override: 
-        oracle_secrets_override: 
       feedConfigFiles:
-      - name: AAPL.tpl
+      - name: AAPL
         content: |
           provider = "InjectiveLabs"
           ticker = "AAPL/USDT"
@@ -196,7 +44,7 @@ oracle:
             AAPLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             AAPLUSDTPrice
           """
-      - name: AMZN.tpl
+      - name: AMZN
         content: |
           provider = "InjectiveLabs"
           ticker = "AMZN/USDT"
@@ -218,7 +66,7 @@ oracle:
             AMZNUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             AMZNUSDTPrice
           """
-      - name: ANTHROPIC.tpl
+      - name: ANTHROPIC
         content: |
           provider = "InjectiveLabs"
           ticker = "ANTHROPIC/USDT"
@@ -239,7 +87,7 @@ oracle:
             ANTHROPICUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
             ANTHROPICUSDTPrice
           """
-      - name: COIN.tpl
+      - name: COIN
         content: |
           provider = "InjectiveLabs"
           ticker = "COIN/USDT"
@@ -261,7 +109,7 @@ oracle:
             COINUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             COINUSDTPrice
           """
-      - name: CRCL.tpl
+      - name: CRCL
         content: |
           provider = "InjectiveLabs"
           ticker = "CRCL/USDT"
@@ -283,7 +131,7 @@ oracle:
             CRCLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             CRCLUSDTPrice
           """
-      - name: GOOGL.tpl
+      - name: GOOGL
         content: |
           provider = "InjectiveLabs"
           ticker = "GOOGL/USDT"
@@ -305,7 +153,7 @@ oracle:
             GOOGLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             GOOGLUSDTPrice
           """
-      - name: H100.tpl
+      - name: H100
         content: |
           provider = "InjectiveLabs"
           ticker = "H100/USDT"
@@ -324,7 +172,7 @@ oracle:
             H100USDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=3]
             H100USDTPrice
           """
-      - name: HOOD.tpl
+      - name: HOOD
         content: |
           provider = "InjectiveLabs"
           ticker = "HOOD/USDT"
@@ -346,7 +194,7 @@ oracle:
             HOODUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             HOODUSDTPrice
           """
-      - name: META.tpl
+      - name: META
         content: |
           provider = "InjectiveLabs"
           ticker = "META/USDT"
@@ -368,7 +216,7 @@ oracle:
             METAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             METAUSDTPrice
           """
-      - name: MSFT.tpl
+      - name: MSFT
         content: |
           provider = "InjectiveLabs"
           ticker = "MSFT/USDT"
@@ -390,7 +238,7 @@ oracle:
             MSFTUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             MSFTUSDTPrice
           """
-      - name: MSTR.tpl
+      - name: MSTR
         content: |
           provider = "InjectiveLabs"
           ticker = "MSTR/USDT"
@@ -413,7 +261,7 @@ oracle:
             MSTRUUSDTPrice
           """
 
-      - name: NVDA.tpl
+      - name: NVDA
         content: |
           provider = "InjectiveLabs"
           ticker = "NVDA/USDT"
@@ -435,7 +283,7 @@ oracle:
             NVDAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             NVDAUSDTPrice
           """
-      - name: OPENAI.tpl
+      - name: OPENAI
         content: |
           provider = "InjectiveLabs"
           ticker = "OPENAI/USDT"
@@ -456,7 +304,7 @@ oracle:
             OPENAIUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
             OPENAIUSDTPrice
           """
-      - name: PLTR.tpl
+      - name: PLTR
         content: |
           provider = "InjectiveLabs"
           ticker = "PLTR/USDT"
@@ -478,7 +326,7 @@ oracle:
             PLTRUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             PLTRUSDTPrice
           """
-      - name: SPACEX.tpl
+      - name: SPACEX
         content: |
           provider = "InjectiveLabs"
           ticker = "SPACEX/USDT"
@@ -499,7 +347,7 @@ oracle:
             SPACEXUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
             SPACEXUSDTPrice
           """
-      - name: TRADFI.tpl
+      - name: TRADFI
         content: |
           provider = "InjectiveLabs"
           ticker = "TRADFI/USDT"
@@ -522,7 +370,7 @@ oracle:
             TRADFIUSDTPrice
           """
 
-      - name: TSLA.tpl
+      - name: TSLA
         content: |
           provider = "InjectiveLabs"
           ticker = "TSLA/USDT"
@@ -544,7 +392,7 @@ oracle:
             TSLAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             TSLAUSDTPrice
           """
-      - name: TTI.tpl
+      - name: TTI
         content: |
           provider = "InjectiveLabs"
           ticker = "TTI/USDT"
@@ -566,46 +414,3 @@ oracle:
             TTIUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             TTIUSDTPrice
           """
-
-api:
-  enabled: false
-  version: v1.2.14
-  replicas: 1
-  port: 9924
-  resources:
-    requests:
-      cpu: "0.25"
-      memory: "256Mi"
-    limits:
-      cpu: "0.5"
-      memory: "512Mi"
-  tolerations:
-    - key: app
-      operator: Equal
-      value: indexer
-      effect: NoSchedule
-    - key: app
-      operator: Equal
-      value: mongo-indexer
-      effect: NoSchedule
-  env:
-    oracleEnv: testnet
-    logLevel: info
-    grpcWebListenAddress: "0.0.0.0:9924"
-    grpcWebRequestTimeout: "10s"
-    statsd:
-      prefix: "inj-oracle-api"
-      addr: ""
-      agent: "datadog"
-      stuckDur: "5m"
-      mocking: "false"
-      disabled: "true"
-  secret:
-    refreshInterval: 1h
-    secretOverride: ""
-  gateway:
-    name: ""
-    namespace: ""
-    hostname: ""
-    pathPrefix: "/"
-
