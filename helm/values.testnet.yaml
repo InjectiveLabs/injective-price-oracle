@@ -315,7 +315,7 @@ oracle:
             feed [type=http
               method=GET
               url="https://markets.squaretower.xyz/api/price-index/injective-h100"
-              headerMap="{\\"Authorization\\": \\"Bearer 19383ff839fbb70c5b54152d9b9c1b8cf19a1555448b4b206748236f6b0c4094\\"}"];
+              headerMap="{\\"Authorization\\": \\"Bearer $SQUARE_TOWER_API_KEY\\"}"];
             feedParse [type="jsonparse" path="price"]
             feed -> feedParse
             usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
