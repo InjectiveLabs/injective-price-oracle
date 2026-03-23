@@ -21,6 +21,10 @@ oracle:
         logLevel: info
         oracleEnv: prod
       replicaCount: 1
+      secret:
+        refreshInterval: 1h
+        streams_override: 
+        oracle_secrets_override: 
       feedConfigFiles:
       - name: AAPL
         content: |
