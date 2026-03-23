@@ -1,7 +1,7 @@
 env: mainnet
 cluster_name: eu
 oracle:
-  web2Provider:
+  web2-provider:
     main:
       name: "main"
       enabled: true
