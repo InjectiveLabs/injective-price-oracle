@@ -26,7 +26,7 @@ oracle:
         streams_override: 
         oracle_secrets_override: 
       feedConfigFiles:
-      - name: AAPL
+      - name: AAPL.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "AAPL/USDT"
@@ -48,7 +48,7 @@ oracle:
             AAPLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             AAPLUSDTPrice
           """
-      - name: AMZN
+      - name: AMZN.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "AMZN/USDT"
@@ -70,7 +70,7 @@ oracle:
             AMZNUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             AMZNUSDTPrice
           """
-      - name: ANTHROPIC
+      - name: ANTHROPIC.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "ANTHROPIC/USDT"
@@ -91,7 +91,7 @@ oracle:
             ANTHROPICUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
             ANTHROPICUSDTPrice
           """
-      - name: COIN
+      - name: COIN.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "COIN/USDT"
@@ -113,7 +113,7 @@ oracle:
             COINUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             COINUSDTPrice
           """
-      - name: CRCL
+      - name: CRCL.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "CRCL/USDT"
@@ -135,7 +135,7 @@ oracle:
             CRCLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             CRCLUSDTPrice
           """
-      - name: GOOGL
+      - name: GOOGL.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "GOOGL/USDT"
@@ -157,7 +157,7 @@ oracle:
             GOOGLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             GOOGLUSDTPrice
           """
-      - name: HOOD
+      - name: HOOD.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "HOOD/USDT"
@@ -179,7 +179,7 @@ oracle:
             HOODUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             HOODUSDTPrice
           """
-      - name: META
+      - name: META.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "META/USDT"
@@ -201,7 +201,7 @@ oracle:
             METAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             METAUSDTPrice
           """
-      - name: MSFT
+      - name: MSFT.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "MSFT/USDT"
@@ -223,7 +223,7 @@ oracle:
             MSFTUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             MSFTUSDTPrice
           """
-      - name: MSTR
+      - name: MSTR.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "MSTR/USDT"
@@ -246,7 +246,7 @@ oracle:
             MSTRUUSDTPrice
           """
 
-      - name: NVDA
+      - name: NVDA.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "NVDA/USDT"
@@ -268,7 +268,7 @@ oracle:
             NVDAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             NVDAUSDTPrice
           """
-      - name: OPENAI
+      - name: OPENAI.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "OPENAI/USDT"
@@ -289,7 +289,7 @@ oracle:
             OPENAIUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
             OPENAIUSDTPrice
           """
-      - name: PLTR
+      - name: PLTR.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "PLTR/USDT"
@@ -311,7 +311,7 @@ oracle:
             PLTRUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             PLTRUSDTPrice
           """
-      - name: SPACEX
+      - name: SPACEX.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "SPACEX/USDT"
@@ -332,7 +332,7 @@ oracle:
             SPACEXUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
             SPACEXUSDTPrice
           """
-      - name: TRADFI
+      - name: TRADFI.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "TRADFI/USDT"
@@ -355,7 +355,7 @@ oracle:
             TRADFIUSDTPrice
           """
 
-      - name: TSLA
+      - name: TSLA.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "TSLA/USDT"
@@ -377,7 +377,7 @@ oracle:
             TSLAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             TSLAUSDTPrice
           """
-      - name: TTI
+      - name: TTI.tpl
         content: |
           provider = "InjectiveLabs"
           ticker = "TTI/USDT"
