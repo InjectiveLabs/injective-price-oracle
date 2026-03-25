@@ -399,3 +399,78 @@ oracle:
             TTIUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             TTIUSDTPrice
           """
+  stork:
+    main:
+      enabled: true
+      name: "main"
+      version: "v1.2.13"
+      env:
+        oracleEnv: prod
+        logLevel: info
+        chain:
+          serviceWaitTimeout: 1m
+          chainId: injective-1
+          networkOverride: "true"
+          networkNode: "mainnet,lb"
+          grpcEndpoint: "k8s.bm.mainnet.chain.grpc.injective.network:443,sentry.chain.grpc.injective.network:443"
+          grpcStreamEndpoint: "k8s.bm.mainnet.chain.stream.injective.network:443,sentry.chain.stream.injective.network:443"
+          tmEndpoint: "https://k8s.bm.mainnet.tm.injective.network,https://sentry.tm.injective.network:443"
+          gasPrices: 160000000inj
+          gasAdjust: "1.1"
+        keyring:
+          useLedger: "false"
+        stork:
+          websocketUrl: wss://api.jp.stork-oracle.network/evm/subscribe
+          websocketSubscribeMessage: '{"type":"subscribe","data":["%s"]}'
+      secret:
+        refreshInterval: 1h
+        oracle_secrets_override:
+      feedConfigFiles:
+        - name: "stork_usdtusd.toml"
+          content: |
+            provider = "stork"
+            ticker = "USDTUSD"
+            pullInterval = "5s"
+            oracleType = "Stork"
+        - name: "stork_helixemergingl1.toml"
+          content: |
+            provider = "stork"
+            ticker = "HELIX_EMERGING_L1_INDEX"
+            pullInterval = "5s"
+            oracleType = "Stork"
+        - name: "stork_2zusd.toml"
+          content: |
+            provider = "stork"
+            ticker = "2ZUSD"
+            pullInterval = "5s"
+            oracleType = "Stork"
+        - name: "stork_monusdmark.toml"
+          content: |
+            provider = "stork"
+            ticker = "MONUSDMARK"
+            pullInterval = "5s"
+            oracleType = "Stork"
+        - name: "stork_megausd.toml"
+          content: |
+            provider = "stork"
+            ticker = "MEGAUSD"
+            pullInterval = "5s"
+            oracleType = "Stork"
+        - name: "stork_h100usd.toml"
+          content: |
+            provider = "stork"
+            ticker = "SQTWR_H100USD"
+            pullInterval = "30s"
+            oracleType = "Stork"
+        - name: "stork_helixaiindex_v2.toml"
+          content: |
+            provider = "stork"
+            ticker = "HELIX_AI_INDEX_V2"
+            pullInterval = "5s"
+            oracleType = "Stork"
+        - name: "stork_litusd.toml"
+          content: |
+            provider = "stork"
+            ticker = "LITUSD"
+            pullInterval = "5s"
+            oracleType = "Stork"
