@@ -155,7 +155,7 @@ spec:
             - name: ORACLE_STATSD_PREFIX
               value: {{ (.env.statsd).prefix | default "inj-oracle" }}
             - name: ORACLE_STATSD_ADDR
-              value: signoz-k8s-infra-otel-agent.signoz:8125
+              value: signoz-k8s-infra-otel-agent.addons:8125
             - name: ORACLE_STATSD_STUCK_DUR
               value: {{ (.env.statsd).stuckDur | default "5m" }}
             - name: ORACLE_STATSD_MOCKING
