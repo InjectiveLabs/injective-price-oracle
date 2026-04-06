@@ -576,7 +576,7 @@ api:
     grpcWebRequestTimeout: "10s"
     statsd:
       prefix: "inj-oracle-api"
-      addr: ""
+      addr: "signoz-k8s-infra-otel-agent.addons:8125"
       agent: "datadog"
       stuckDur: "5m"
       mocking: "false"
