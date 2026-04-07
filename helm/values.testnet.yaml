@@ -157,6 +157,7 @@ oracle:
       env:
         chain:
           chainId: injective-888
+          networkNode: "testnet,lb"
           gasPrices: 1600000000inj
           gasAdjust: "1.1"
           serviceWaitTimeout: 1m
