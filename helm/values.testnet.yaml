@@ -156,14 +156,14 @@ oracle:
       version: "v1.2.13"
       env:
         chain:
-          chainId: injective-1
+          chainId: injective-888
           gasPrices: 1600000000inj
           gasAdjust: "1.1"
           serviceWaitTimeout: 1m
           networkOverride: "true"
-          grpcEndpoint: "k8s.bm.mainnet.chain.grpc.injective.network:443,sentry.chain.grpc.injective.network:443"
-          grpcStreamEndpoint: "k8s.bm.mainnet.chain.stream.injective.network:443,sentry.chain.stream.injective.network:443"
-          tmEndpoint: "https://k8s.bm.mainnet.tm.injective.network,https://sentry.tm.injective.network:443"
+          grpcEndpoint: "testnet.sentry.chain.grpc.injective.network:443"
+          grpcStreamEndpoint: "testnet.sentry.chain.stream.injective.network:443"
+          tmEndpoint: "https://testnet.sentry.tm.injective.network:443"
         keyring:
           useLedger: "false"
         logLevel: info
