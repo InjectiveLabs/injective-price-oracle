@@ -4,7 +4,7 @@ cluster_name: testnet
 oracle:
   chainlink:
     main:
-      enabled: true
+      enabled: false
       name: main
       version: v1.2.8-chainlink-rc3
       tolerations:
