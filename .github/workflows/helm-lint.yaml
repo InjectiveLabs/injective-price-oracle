@@ -1,0 +1,49 @@
+name: Helm Lint & Template
+
+on:
+  pull_request:
+    paths:
+      - "helm/**"
+  push:
+    branches: [master]
+    paths:
+      - "helm/**"
+
+jobs:
+  helm-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.17.3
+
+      - name: Lint chart
+        run: helm lint ./helm
+
+      - name: Find values files
+        id: values
+        run: |
+          files=$(find ./helm -name 'values.*.yaml' -o -name 'values.*.yml' | sort)
+          echo "files<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$files" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Template chart against each values file
+        run: |
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            echo "--- Templating with $f ---"
+            helm template price-oracle ./helm -f "$f"
+          done <<< "${{ steps.values.outputs.files }}"
+
+      - name: Validate rendered manifests
+        run: |
+          set -euo pipefail
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            echo "--- Validating with $f ---"
+            helm template price-oracle ./helm -f "$f" | kubectl apply --dry-run=client -f - 2>&1
+          done <<< "${{ steps.values.outputs.files }}"
