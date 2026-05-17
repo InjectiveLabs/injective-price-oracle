@@ -400,6 +400,28 @@ oracle:
             NVDAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             NVDAUSDTPrice
           """
+      - name: NVDA_USDC.tpl
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "NVDA/USDC"
+          pullInterval = "5s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x61c4ca5b9731a79e285a01e24432d57d89f0ecdd4cd7828196ca8992d5eafef6%22%2C%220xb1073854ed24cbc755dc527418f52b7d271f6cc967bbf8d8129112b18860a593%22%2C%220x25719379353a508b1531945f3c466759d6efd866f52fbaeb3631decb70ba381f%22%2C%220xc949a96fd1626e82abc5e1496e6e8d44683ac8ac288015ee90bf37257e3e6bf6%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
+            usdcParse [type="jsonparse" path="erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"]
+            usdc -> usdcParse
+
+            NVDAUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
+            NVDAUSDCPrice
+          """
       - name: OPENAI.tpl
         content: |
           provider = "InjectiveLabs"
