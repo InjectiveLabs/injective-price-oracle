@@ -289,6 +289,28 @@ oracle:
             METAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             METAUSDTPrice
           """
+      - name: META_USDC.tpl
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "META/USDC"
+          pullInterval = "5s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xce0999c4f22f35f00e8f9913694868d00279c0b9efbd7cb1c358bf2fd76295c9%22%2C%220x78a3e3b8e676a8f73c439f5d749737034b139bbbe899ba5775216fba596607fe%22%2C%220x399f1e8f1c4a517859963b56f104727a7a3c7f0f8fee56d34fa1f72e5a4b78ef%22%2C%220x783a457c2fe5642c96a66ba9a2fe61f511e9a0b539e0ed2a443321978e4d65a1%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
+            usdcParse [type="jsonparse" path="erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"]
+            usdc -> usdcParse
+
+            METAUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
+            METAUSDCPrice
+          """
       - name: MSFT.tpl
         content: |
           provider = "InjectiveLabs"
