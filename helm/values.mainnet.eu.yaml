@@ -70,28 +70,6 @@ oracle:
             AAPLUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
             AAPLUSDCPrice
           """
-      - name: AMZN.tpl
-        content: |
-          provider = "InjectiveLabs"
-          ticker = "AMZN/USDT"
-          pullInterval = "2s"
-          oracleType = "Provider"
-          observationSource = """
-            feed [type=http
-                    method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x82c59e36a8e0247e15283748d6cd51f5fa1019d73fbf3ab6d927e17d9e357a7f%22%2C%220xb5d0e0fa58a1f8b81498ae670ce93c872d14434b72c364885d4fa1b257cbb07a%22%2C%220x62731dfcc8b8542e52753f208248c3e73fab2ec15422d6f65c2decda71ccea0d%22%2C%220x4ec1330b56eca05037c6b5a51d05f73db79bf3b4d29899881acd27966af184b4%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
-                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
-            feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
-            feed -> feedParse1 -> feedParse2
-
-            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
-            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
-            usdt -> usdtParse
-
-            AMZNUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
-            AMZNUSDTPrice
-          """
       - name: AMZN_USDC.tpl
         content: |
           provider = "InjectiveLabs"
