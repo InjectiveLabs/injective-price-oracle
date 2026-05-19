@@ -201,6 +201,28 @@ oracle:
             CRCLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             CRCLUSDTPrice
           """
+      - name: CRCL_USDC.tpl
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "CRCL/USDC"
+          pullInterval = "5s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xb6ce1644a22bb348f89a81696141c1caaca5e7ea83de289a44fba1a9897ca2d6%22%2C%220x92b8527aabe59ea2b12230f7b532769b133ffb118dfbd48ff676f14b273f1365%22%2C%220x9bdba52fbb3d588d573928b1e781c6441e446a83c011fed92d8362c5b309ce02%22%2C%220x63cc3973d36735f8b1725f1069a7ddee200db1570573674da916282fde15dd0e%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
+            usdcParse [type="jsonparse" path="erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"]
+            usdc -> usdcParse
+
+            CRCLUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
+            CRCLUSDCPrice
+          """
       - name: GOOGL.tpl
         content: |
           provider = "InjectiveLabs"
