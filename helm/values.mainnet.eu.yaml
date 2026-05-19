@@ -223,6 +223,28 @@ oracle:
             GOOGLUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
             GOOGLUSDTPrice
           """
+      - name: GOOGL_USDC.tpl
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "GOOGL/USDC"
+          pullInterval = "5s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=GET
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x43c3a42db1a663a22551d6c35d5bab823e86c1a05f27de3dd900e68952fce175%22%2C%220x5a48c03e9b9cb337801073ed9d166817473697efff0d138874e0f6a33d6d5aa6%22%2C%220x88d0800b1649d98e21b8bf9c3f42ab548034d62874ad5d80e1c1b730566d7f61%22%2C%220x07d24bb76843496a45bce0add8b51555f2ea02098cb04f4c6d61f7b5720836b4%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse1 [type="jsonparse" path="data,result"]
+            feedParse2 [type="jsonparse" path="composite_rate"]
+            feed -> feedParse1 -> feedParse2
+
+            usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
+            usdcParse [type="jsonparse" path="erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"]
+            usdc -> usdcParse
+
+            GOOGLUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
+            GOOGLUSDCPrice
+          """
       - name: HOOD.tpl
         content: |
           provider = "InjectiveLabs"
