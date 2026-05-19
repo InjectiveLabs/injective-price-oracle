@@ -117,7 +117,7 @@ oracle:
         content: |
           provider = "InjectiveLabs"
           ticker = "CRCL/USDC"
-          pullInterval = "5s"
+          pullInterval = "2s"
           oracleType = "Provider"
           observationSource = """
             feed [type=http
