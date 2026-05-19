@@ -223,28 +223,6 @@ oracle:
             MSFTUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
             MSFTUSDCPrice
           """
-      - name: MSTR.tpl
-        content: |
-          provider = "InjectiveLabs"
-          ticker = "MSTR/USDT"
-          pullInterval = "2s"
-          oracleType = "Provider"
-          observationSource = """
-            feed [type=http
-                    method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x1a11eb21c271f3127e4c9ec8a0e9b1042dc088ccba7a94a1a7d1aa37599a00f6%22%2C%220xe1e80251e5f5184f2195008382538e847fafc36f751896889dd3d1b1f6111f09%22%2C%220xd8b856d7e17c467877d2d947f27b832db0d65b362ddb6f728797d46b0a8b54c0%22%2C%220xc3055f49e1dc863a7f24d9b83e86fe10d7d16fb583bc6445505b01d230e0d647%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
-                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
-            feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
-            feed -> feedParse1 -> feedParse2
-
-            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
-            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
-            usdt -> usdtParse
-
-            MSTRUUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
-            MSTRUUSDTPrice
-          """
       - name: MSTR_USDC.tpl
         content: |
           provider = "InjectiveLabs"
