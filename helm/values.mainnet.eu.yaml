@@ -315,7 +315,7 @@ oracle:
         content: |
           provider = "InjectiveLabs"
           ticker = "TSLA/USDC"
-          pullInterval = "5s"
+          pullInterval = "2s"
           oracleType = "Provider"
           observationSource = """
             feed [type=http
