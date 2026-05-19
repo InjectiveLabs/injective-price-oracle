@@ -332,28 +332,6 @@ oracle:
             SPACEXUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
             SPACEXUSDTPrice
           """
-      - name: TSLA.tpl
-        content: |
-          provider = "InjectiveLabs"
-          ticker = "TSLA/USDT"
-          pullInterval = "2s"
-          oracleType = "Provider"
-          observationSource = """
-            feed [type=http
-                    method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x42676a595d0099c381687124805c8bb22c75424dffcaa55e3dc6549854ebe20a%22%2C%220x16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1%22%2C%220x2a797e196973b72447e0ab8e841d9f5706c37dc581fe66a0bd21bcd256cdb9b9%22%2C%220x713631e41c06db404e6a5d029f3eebfd5b885c59dce4a19f337c024e26584e26%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
-                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
-            feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
-            feed -> feedParse1 -> feedParse2
-
-            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
-            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
-            usdt -> usdtParse
-
-            TSLAUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
-            TSLAUSDTPrice
-          """
       - name: TSLA_USDC.tpl
         content: |
           provider = "InjectiveLabs"
