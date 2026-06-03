@@ -31,3 +31,5 @@ build
 dist/
 var/
 .env
+CLAUDE.md
+DEPLOYMENT.md
