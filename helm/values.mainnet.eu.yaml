@@ -466,10 +466,10 @@ oracle:
             SPACEXUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
             SPACEXUSDTPrice
           """
-      - name: TRADFI.tpl
+      - name: TRADFI_USDC.tpl
         content: |
           provider = "InjectiveLabs"
-          ticker = "TRADFI/USDT"
+          ticker = "TRADFI/USDC"
           pullInterval = "2s"
           oracleType = "Provider"
           observationSource = """
@@ -481,12 +481,12 @@ oracle:
             feedParse2 [type="jsonparse" path="composite_rate"]
             feed -> feedParse1 -> feedParse2
 
-            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
-            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
-            usdt -> usdtParse
+            usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
+            usdcParse [type="jsonparse" path="erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"]
+            usdc -> usdcParse
 
-            TRADFIUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
-            TRADFIUSDTPrice
+            TRADFIUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
+            TRADFIUSDCPrice
           """
       - name: TSLA_USDC.tpl
         content: |
@@ -510,27 +510,27 @@ oracle:
             TSLAUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
             TSLAUSDCPrice
           """
-      - name: TTI.tpl
+      - name: TTI_USDC.tpl
         content: |
           provider = "InjectiveLabs"
-          ticker = "TTI/USDT"
+          ticker = "TTI/USDC"
           pullInterval = "5s"
           oracleType = "Provider"
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xfbbbc98c9d0591ad0ca0b0e53ff2efb955fef8958ffa6890f5a3599e91ec1d49%22%2C%220x9695e2b96ea7b3859da9ed25b7a46a920a776e2fdae19a7bcfdf2b219230452d%22%2C%220xe0746896538f836f754adae0aff16859b33344736cbd85f2e36fb8ca057b9d26%22%2C%220x0eda5e8f3e5881e7e64971b02359250f9d70977e63940c4c9c0d77f54195f13e%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221363%22%2C%22isId%22%3Atrue%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
-            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
-            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
-            usdt -> usdtParse
+            usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
+            usdcParse [type="jsonparse" path="erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"]
+            usdc -> usdcParse
 
-            TTIUSDTPrice [type="divide" input="$(feedParse2)" divisor="$(usdtParse)" precision=6]
-            TTIUSDTPrice
+            TTIUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
+            TTIUSDCPrice
           """
       - name: XAG_USDC.tpl
         content: |
