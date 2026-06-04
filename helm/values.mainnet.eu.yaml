@@ -5,7 +5,7 @@ oracle:
     main:
       name: "main"
       enabled: true
-      version: "v1.2.13"
+      version: "v1.2.15"
       env:
         chain:
           chainId: injective-1
