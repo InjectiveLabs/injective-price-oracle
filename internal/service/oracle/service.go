@@ -260,7 +260,7 @@ const (
 	commitPriceBatchTimeLimit = 5 * time.Second
 	chainMaxTimeLimit         = 3 * time.Second
 	commitPriceBatchSizeLimit = 100
-	maxRetries                = 3
+	maxRetries                = 6
 )
 
 var pullIntervalChain = 500 * time.Millisecond
