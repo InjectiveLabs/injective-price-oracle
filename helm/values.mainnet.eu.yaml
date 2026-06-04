@@ -10,7 +10,7 @@ oracle:
         chain:
           chainId: injective-1
           gasPrices: 1600000000inj
-          gasAdjust: "1.1"
+          gasAdjust: "1.5"
           serviceWaitTimeout: 1m
           networkOverride: "true"
           grpcEndpoint: "k8s.bm.mainnet.chain.grpc.injective.network:443,sentry.chain.grpc.injective.network:443"
