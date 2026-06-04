@@ -99,7 +99,7 @@ oracle:
     main:
       enabled: true
       name: main
-      version: v1.2.14
+      version: v1.2.15
       tolerations:
         - key: app
           operator: Equal
@@ -153,7 +153,7 @@ oracle:
     main:
       name: "main"
       enabled: true
-      version: "v1.2.13"
+      version: "v1.2.15"
       env:
         chain:
           chainId: injective-888
@@ -551,7 +551,7 @@ oracle:
 
 api:
   enabled: false
-  version: v1.2.14
+  version: v1.2.15
   replicas: 1
   port: 9924
   resources:
