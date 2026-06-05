@@ -554,6 +554,28 @@ oracle:
             TTIUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
             TTIUSDCPrice
           """
+      - name: WTI_USDC.tpl
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "WTI/USDC"
+          pullInterval = "5s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=POST
+                    url="https://fast-api.mainnet.seda.xyz/execute?encoding=json"
+                    requestData="{\\"execProgramId\\":\\"65704031cc9bd9816db3fa78105445eeb0b4e5be20ca3e0d08d7f946130306c3\\",\\"execInputs\\":{\\"proxyConfig\\":{\\"proxyUrl\\":\\"http://pyth-pro-injective.proxy.mainnet.seda.xyz/proxy/\\",\\"proxyPublicKey\\":\\"024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9\\"},\\"priceConfig\\":{\\"idOrSymbol\\":\\"3068\\",\\"isId\\":true,\\"channel\\":\\"FixedRate50ms\\"},\\"rolloverConfig\\":{\\"nextAssetId\\":\\"3069\\",\\"rolloverStart\\":1780670000,\\"rolloverDuration\\":82800}}}"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse [type="jsonparse" path="data,result,price"]
+            feed -> feedParse
+
+            usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
+            usdcParse [type="jsonparse" path="erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"]
+            usdc -> usdcParse
+
+            WTIUSDCPrice [type="divide" input="$(feedParse)" divisor="$(usdcParse)" precision=6]
+            WTIUSDCPrice
+          """
       - name: XAG_USDC.tpl
         content: |
           provider = "InjectiveLabs"
