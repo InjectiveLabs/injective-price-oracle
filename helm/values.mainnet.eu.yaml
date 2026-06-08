@@ -488,6 +488,28 @@ oracle:
             SPACEXUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
             SPACEXUSDTPrice
           """
+      - name: SPCX_USDC.tpl
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "SPCX/USDC"
+          pullInterval = "5s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=POST
+                    url="https://fast-api.mainnet.seda.xyz/execute?encoding=json"
+                    requestData="{\\"execProgramId\\":\\"0043ac6c9125f0faf5bac98cac2171a9929f6806750c6e4510e2e1e48b246264\\",\\"execInputs\\":{\\"dex\\":\\"xyz\\",\\"assetIndex\\":76,\\"coin\\":\\"xyz:SPCX\\",\\"network\\":\\"Mainnet\\"}}"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse [type="jsonparse" path="data,result,price"]
+            feed -> feedParse
+
+            usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
+            usdcParse [type="jsonparse" path="erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"]
+            usdc -> usdcParse
+
+            SPCXUSDCPrice [type="divide" input="$(feedParse)" divisor="$(usdcParse)" precision=6]
+            SPCXUSDCPrice
+          """
       - name: TRADFI_USDC.tpl
         content: |
           provider = "InjectiveLabs"
