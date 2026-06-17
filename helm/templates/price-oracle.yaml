@@ -77,8 +77,8 @@ spec:
               value: {{ .env.chain.tmEndpoint }}
             - name: ORACLE_COSMOS_GAS_PRICES
               value: {{ .env.chain.gasPrices | default "1600000000inj" }}
-            - name: ORACLE_COSMOS_GAS_ADJUST
-              value: {{ .env.chain.gasAdjust | default "1.5" | quote }}
+            - name: ORACLE_COSMOS_GAS
+              value: {{ .env.chain.gas | default "7000000" | quote }}
             - name: ORACLE_DYNAMIC_FEEDS_DIR
               value: {{ .env.chain.dynamicFeedsDir | default "" | quote }}
 

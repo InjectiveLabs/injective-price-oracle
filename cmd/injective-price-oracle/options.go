@@ -41,7 +41,7 @@ func initCosmosOptions(
 	cosmosStreamGRPCs *[]string,
 	tendermintRPCs *[]string,
 	cosmosGasPrices *string,
-	cosmosGasAdjust *float64,
+	cosmosGas *int,
 	networkNode *string,
 ) {
 	cmd.BoolPtr(cosmosOverrideNetwork, cli.BoolOpt{
@@ -85,11 +85,11 @@ func initCosmosOptions(
 		Value:  "", // example: 500000000inj
 	})
 
-	cmd.Float64Ptr(cosmosGasAdjust, cli.Float64Opt{
-		Name:   "cosmos-gas-adjust",
-		Desc:   "Specify Cosmos chain transaction fees gas adjustment factor",
-		EnvVar: "ORACLE_COSMOS_GAS_ADJUST",
-		Value:  1.5,
+	cmd.IntPtr(cosmosGas, cli.IntOpt{
+		Name:   "cosmos-gas",
+		Desc:   "Fixed gas limit per tx (simulation is disabled). Must cover the largest price batch; fee = gas * gas-prices, and unused gas is not refunded, so tune it to your feeds.",
+		EnvVar: "ORACLE_COSMOS_GAS",
+		Value:  0,
 	})
 
 	cmd.StringPtr(networkNode, cli.StringOpt{

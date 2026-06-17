@@ -28,7 +28,7 @@ oracle:
           grpcStreamEndpoint: testnet.sentry.chain.stream.injective.network:443,testnet.chain.stream.injective.network:443
           tmEndpoint: https://testnet.sentry.tm.injective.network:443,https://testnet.tm.injective.network:443
           gasPrices: 160000000inj
-          gasAdjust: "1.8"
+          gas: "7000000"
         keyring:
           useLedger: "false"
         chainlink:
@@ -121,7 +121,7 @@ oracle:
           grpcStreamEndpoint: testnet.sentry.chain.stream.injective.network:443,testnet.chain.stream.injective.network:443
           tmEndpoint: https://testnet.sentry.tm.injective.network:443,https://testnet.tm.injective.network:443
           gasPrices: 160000000inj
-          gasAdjust: "1.8"
+          gas: "7000000"
         keyring:
           useLedger: "false"
         stork:
@@ -159,7 +159,7 @@ oracle:
           chainId: injective-888
           networkNode: "testnet,lb"
           gasPrices: 1600000000inj
-          gasAdjust: "1.1"
+          gas: "7000000"
           serviceWaitTimeout: 1m
           networkOverride: "true"
           grpcEndpoint: "testnet.sentry.chain.grpc.injective.network:443"

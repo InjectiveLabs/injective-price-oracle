@@ -28,7 +28,7 @@ type CosmosConfig struct {
 	cosmosGRPC       string
 	cosmosStreamGRPC string
 	cosmosGasPrices  string
-	cosmosGasAdjust  float64
+	cosmosGas        uint64
 }
 
 // oracleCmd action runs the service
@@ -43,7 +43,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		cosmosStreamGRPCs     []string
 		tendermintRPCs        []string
 		cosmosGasPrices       string
-		cosmosGasAdjust       float64
+		cosmosGas             int
 		networkNode           string
 
 		// Cosmos Key Management
@@ -82,7 +82,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		&cosmosStreamGRPCs,
 		&tendermintRPCs,
 		&cosmosGasPrices,
-		&cosmosGasAdjust,
+		&cosmosGas,
 		&networkNode,
 	)
 
@@ -165,7 +165,7 @@ func oracleCmd(cmd *cli.Cmd) {
 					cosmosGRPC:       cosmosGRPCs[i],
 					cosmosStreamGRPC: cosmosStreamGRPCs[i],
 					cosmosGasPrices:  cosmosGasPrices,
-					cosmosGasAdjust:  cosmosGasAdjust,
+					cosmosGas:        uint64(cosmosGas),
 				})
 				if err != nil {
 					log.WithError(err).Warningln("failed to initialize cosmos client")
@@ -177,7 +177,7 @@ func oracleCmd(cmd *cli.Cmd) {
 		} else {
 			cosmosClient, err := NewCosmosClient(ctx, senderAddress, cosmosKeyring, network, &CosmosConfig{
 				cosmosGasPrices: cosmosGasPrices,
-				cosmosGasAdjust: cosmosGasAdjust,
+				cosmosGas:       uint64(cosmosGas),
 			})
 			if err != nil {
 				log.WithError(err).Fatalln("failed to initialize cosmos client")
@@ -324,9 +324,18 @@ func NewCosmosClient(ctx context.Context, senderAddress cosmtypes.AccAddress, co
 		return nil, err
 	}
 
-	clientCtx = clientCtx.WithNodeURI(network.TmEndpoint).WithClient(tmRPC)
+	if cosmosConfig.cosmosGas == 0 {
+		return nil, errors.New("cosmos gas limit must be set (ORACLE_COSMOS_GAS): tx simulation is disabled, so the gas limit is fixed per tx")
+	}
+
+	// Simulation is disabled to avoid the extra node round-trip (and its timeouts)
+	// on every broadcast. With simulation off, the gas limit is no longer estimated
+	// per tx, so it must be set explicitly via the tx factory. Gas adjustment only
+	// padded the simulated gas, so it is irrelevant here and intentionally dropped.
+	// Gas prices are still required: fee = gas limit * gas price.
+	clientCtx = clientCtx.WithNodeURI(network.TmEndpoint).WithClient(tmRPC).WithSimulation(false)
 	txFactory := chainclient.NewTxFactory(clientCtx)
-	txFactory = txFactory.WithGasAdjustment(cosmosConfig.cosmosGasAdjust)
+	txFactory = txFactory.WithGas(cosmosConfig.cosmosGas)
 	txFactory = txFactory.WithGasPrices(cosmosConfig.cosmosGasPrices)
 
 	cosmosClient, err := chainclient.NewChainClient(clientCtx, network, common.OptionTxFactory(&txFactory))
