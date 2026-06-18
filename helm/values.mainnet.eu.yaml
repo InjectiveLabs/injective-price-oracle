@@ -468,27 +468,6 @@ oracle:
             SNDKUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
             SNDKUSDCPrice
           """
-      - name: SPACEX.tpl
-        content: |
-          provider = "InjectiveLabs"
-          ticker = "SPACEX/USDT"
-          pullInterval = "1m"
-          oracleType = "Provider"
-          observationSource = """
-            feed [type=http
-                    method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=e1fe25ac6da5502d0ff590e5d9fd6f00cdc230443b1c98b9483efee7f4b6cada&execInputs=46488-07&returnLastResult=true&encoding=utf8"
-                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
-            feedParse [type="jsonparse" path="data,result"]
-            feed -> feedParse
-
-            usdt [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"];
-            usdtParse [type="jsonparse" path="peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"]
-            usdt -> usdtParse
-
-            SPACEXUSDTPrice [type="divide" input="$(feedParse)" divisor="$(usdtParse)" precision=6]
-            SPACEXUSDTPrice
-          """
       - name: SPCX_USDC.tpl
         content: |
           provider = "InjectiveLabs"
