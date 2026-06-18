@@ -35,10 +35,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x8c320e4cd87c6cef41513aead15db413cf9253211923fef6e87187a7f6688906%22%2C%220x49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688%22%2C%220x5a207c4aa0114baecf852fcd9db9beb8ec715f2db48caa525dbd878fd416fb09%22%2C%220x241b9a5ce1c3e4bfc68e377158328628f1b478afaa796c4b1760bd3713c2d2d2%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%22922%22%2C%22isId%22%3Atrue%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
@@ -57,10 +57,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x82c59e36a8e0247e15283748d6cd51f5fa1019d73fbf3ab6d927e17d9e357a7f%22%2C%220xb5d0e0fa58a1f8b81498ae670ce93c872d14434b72c364885d4fa1b257cbb07a%22%2C%220x62731dfcc8b8542e52753f208248c3e73fab2ec15422d6f65c2decda71ccea0d%22%2C%220x4ec1330b56eca05037c6b5a51d05f73db79bf3b4d29899881acd27966af184b4%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%22954%22%2C%22isId%22%3Atrue%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
@@ -123,10 +123,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x8bdee6bc9dc5a61b971e31dcfae96fc0c7eae37b2604aa6002ad22980bd3517c%22%2C%220xfee33f2a978bf32dd6b662b65ba8083c6773b494f8401194ec1870c640860245%22%2C%220x5c3bd92f2eed33779040caea9f82fac705f5121d26251f8f5e17ec35b9559cd4%22%2C%220x42ded7a3ed036606ab22ece1c942f6f9245a67f6f4ec27cfad5974d45fe9d6b6%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221042%22%2C%22isId%22%3Atrue%2C%22channel%22%3A%22FixedRate200ms%22%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
@@ -189,10 +189,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x43c3a42db1a663a22551d6c35d5bab823e86c1a05f27de3dd900e68952fce175%22%2C%220x5a48c03e9b9cb337801073ed9d166817473697efff0d138874e0f6a33d6d5aa6%22%2C%220x88d0800b1649d98e21b8bf9c3f42ab548034d62874ad5d80e1c1b730566d7f61%22%2C%220x07d24bb76843496a45bce0add8b51555f2ea02098cb04f4c6d61f7b5720836b4%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221163%22%2C%22isId%22%3Atrue%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
@@ -233,10 +233,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x52ecf79ab14d988ca24fbd282a7cb91d41d36cb76aa3c9075a3eabce9ff63e2f%22%2C%220x306736a4035846ba15a3496eed57225b64cc19230a50d14f3ed20fd7219b7849%22%2C%220xd2cecc2b72dc91fcc71750fbdb811b4ff04eff36e26a6ae6628dbeaed01e6d62%22%2C%220xf6a467733ed71ee41f7e50132b14cff1d6857554a40d8a92c63859d1bcd64e57%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221182%22%2C%22isId%22%3Atrue%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
@@ -277,10 +277,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xce0999c4f22f35f00e8f9913694868d00279c0b9efbd7cb1c358bf2fd76295c9%22%2C%220x78a3e3b8e676a8f73c439f5d749737034b139bbbe899ba5775216fba596607fe%22%2C%220x399f1e8f1c4a517859963b56f104727a7a3c7f0f8fee56d34fa1f72e5a4b78ef%22%2C%220x783a457c2fe5642c96a66ba9a2fe61f511e9a0b539e0ed2a443321978e4d65a1%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221272%22%2C%22isId%22%3Atrue%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
@@ -299,10 +299,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xe8da97162840e7d6170094e0722900b1f2577dd1cc63cff10f91fc68a17eb2c9%22%2C%220xd0ca23c1cc005e004ccf1db5bf76aeb6a49218f43dac3d4b275e92de12ded4d1%22%2C%220x556b3e4dcc1c66448ba4054a0d9485545e3227ffc90a269f630620c5a38241ab%22%2C%220x8f98f8267ddddeeb61b4fd11f21dc0c2842c417622b4d685243fa73b5830131f%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221292%22%2C%22isId%22%3Atrue%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
@@ -321,10 +321,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x1a11eb21c271f3127e4c9ec8a0e9b1042dc088ccba7a94a1a7d1aa37599a00f6%22%2C%220xe1e80251e5f5184f2195008382538e847fafc36f751896889dd3d1b1f6111f09%22%2C%220xd8b856d7e17c467877d2d947f27b832db0d65b362ddb6f728797d46b0a8b54c0%22%2C%220xc3055f49e1dc863a7f24d9b83e86fe10d7d16fb583bc6445505b01d230e0d647%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221294%22%2C%22isId%22%3Atrue%2C%22channel%22%3A%22FixedRate200ms%22%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
@@ -367,10 +367,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x61c4ca5b9731a79e285a01e24432d57d89f0ecdd4cd7828196ca8992d5eafef6%22%2C%220xb1073854ed24cbc755dc527418f52b7d271f6cc967bbf8d8129112b18860a593%22%2C%220x25719379353a508b1531945f3c466759d6efd866f52fbaeb3631decb70ba381f%22%2C%220xc949a96fd1626e82abc5e1496e6e8d44683ac8ac288015ee90bf37257e3e6bf6%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221314%22%2C%22isId%22%3Atrue%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
@@ -411,10 +411,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220xbd8a8e449278ad0b6512695b1c558f816309f045d4e3da21dfc19448281840e8%22%2C%220x11a70634863ddffb71f2b11f2cff29f73f3db8f6d0b78c49f2b5f4ad36e885f0%22%2C%220xb11610f59456057d9bc82b0795c6d7aea6e2e075fc3e1991abc05e2b2861abb2%22%2C%220x3a4c922ec7e8cd86a6fa4005827e723a134a16f4ffe836eac91e7820c61f75a1%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221346%22%2C%22isId%22%3Atrue%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
@@ -521,10 +521,10 @@ oracle:
           observationSource = """
             feed [type=http
                     method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=ad880830f3d6a46024715640b1ffd80a373f61008003aaefbbdded06cd27e5ad&execInputs=%7B%22session_ids%22%3A%5B%220x42676a595d0099c381687124805c8bb22c75424dffcaa55e3dc6549854ebe20a%22%2C%220x16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1%22%2C%220x2a797e196973b72447e0ab8e841d9f5706c37dc581fe66a0bd21bcd256cdb9b9%22%2C%220x713631e41c06db404e6a5d029f3eebfd5b885c59dce4a19f337c024e26584e26%22%5D%2C%22weights%22%3A%5B100%2C100%2C100%2C100%5D%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
+                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221435%22%2C%22isId%22%3Atrue%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
                     headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
             feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="composite_rate"]
+            feedParse2 [type="jsonparse" path="price"]
             feed -> feedParse1 -> feedParse2
 
             usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
