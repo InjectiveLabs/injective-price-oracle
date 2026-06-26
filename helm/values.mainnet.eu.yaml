@@ -28,28 +28,6 @@ oracle:
       feedConfigFiles:
 
 
-      - name: ORCL_USDC.tpl
-        content: |
-          provider = "InjectiveLabs"
-          ticker = "ORCL/USDC"
-          pullInterval = "5s"
-          oracleType = "Provider"
-          observationSource = """
-            feed [type=http
-                    method=GET
-                    url="https://fast-api.mainnet.seda.xyz/execute?execProgramId=911f50231841ade5fe000b3b08ffaf2f2a4999e41dd75739390c6b6306ce1f54&execInputs=%7B%22proxyConfig%22%3A%7B%22proxyUrl%22%3A%22http%3A%2F%2Fpyth-pro-injective.proxy.mainnet.seda.xyz%2Fproxy%2F%22%2C%22proxyPublicKey%22%3A%22024f821c036d8459434ed22c7a9eae30306c98287dc3c2c523819bde735b50a7f9%22%7D%2C%22idOrSymbol%22%3A%221324%22%2C%22isId%22%3Atrue%2C%22channel%22%3A%22FixedRate200ms%22%7D&includeDebugInfo=true&encoding=utf8&injectLastResult=success"
-                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
-            feedParse1 [type="jsonparse" path="data,result"]
-            feedParse2 [type="jsonparse" path="price"]
-            feed -> feedParse1 -> feedParse2
-
-            usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
-            usdcParse [type="jsonparse" path="erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"]
-            usdc -> usdcParse
-
-            ORCLUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
-            ORCLUSDCPrice
-          """
       - name: PLTR_USDC.tpl
         content: |
           provider = "InjectiveLabs"
