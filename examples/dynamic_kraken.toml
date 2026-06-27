@@ -1,0 +1,10 @@
+provider = "kraken"
+ticker = "INJ/USD"
+pullInterval = "1m"
+observationSource = """
+   ticker [type=http method=GET url="https://api.kraken.com/0/public/Ticker?pair=INJUSD"];
+   parsePrice [type="jsonparse" path="result,INJUSD,c,0"]
+   multiplyDecimals [type="multiply" times=1000000]
+
+   ticker -> parsePrice -> multiplyDecimals
+"""

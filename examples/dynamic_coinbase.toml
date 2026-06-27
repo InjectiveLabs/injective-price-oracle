@@ -1,0 +1,10 @@
+provider = "coinbase"
+ticker = "INJ/USD"
+pullInterval = "1m"
+observationSource = """
+   ticker [type=http method=GET url="https://api.coinbase.com/v2/prices/INJ-USD/spot"];
+   parsePrice [type="jsonparse" path="data,amount"]
+   multiplyDecimals [type="multiply" times=1000000]
+
+   ticker -> parsePrice -> multiplyDecimals
+"""
