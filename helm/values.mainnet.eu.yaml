@@ -92,6 +92,28 @@ oracle:
             TRADFIUSDCPrice [type="divide" input="$(feedParse2)" divisor="$(usdcParse)" precision=6]
             TRADFIUSDCPrice
           """
+      - name: TRIA_USDC.tpl
+        content: |
+          provider = "InjectiveLabs"
+          ticker = "TRIA/USDC"
+          pullInterval = "5s"
+          oracleType = "Provider"
+          observationSource = """
+            feed [type=http
+                    method=POST
+                    url="https://fast-api.mainnet.seda.xyz/execute?encoding=json"
+                    requestData="{\\"execProgramId\\":\\"746d66496fd39ef4ab628adf61b5cf705137219270fe2881555b1805ac136a27\\",\\"execInputs\\":{\\"proxyConfig\\":{\\"proxyUrl\\":\\"http://multi.proxy.mainnet.seda.xyz/proxy\\",\\"proxyPublicKey\\":\\"03ca83cf013a472640b85442431707022147693c1afe77303149957d632727819f\\"},\\"exchanges\\":[\\"binanceFutures\\"],\\"path\\":\\"multi/TRIA/0/TRIA\\",\\"minSources\\":1},\\"inputEncoding\\":\\"auto\\"}"
+                    headerMap="{\\"Authorization\\": \\"Bearer $SEDA_API_KEY\\", \\"Content-Type\\": \\"application/json\\"}"];
+            feedParse [type="jsonparse" path="data,result,price"]
+            feed -> feedParse
+
+            usdc [type=http method=GET url="https://k8s.mainnet.asset.injective.network/asset-price/v1/prices?denoms=erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"];
+            usdcParse [type="jsonparse" path="erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a"]
+            usdc -> usdcParse
+
+            TRIAUSDCPrice [type="divide" input="$(feedParse)" divisor="$(usdcParse)" precision=6]
+            TRIAUSDCPrice
+          """
       - name: TTI_USDC.tpl
         content: |
           provider = "InjectiveLabs"
